@@ -20,7 +20,7 @@ export function EditAgentDialog({ agent, onClose, onSaved }: EditAgentDialogProp
   const [title, setTitle] = useState(agent.title || '')
   const [role, setRole] = useState(agent.role || '')
   const [icon, setIcon] = useState(agent.icon || '')
-  const [description, setDescription] = useState(agent.role || '')
+  const [_description, _setDescription] = useState(agent.role || '')
   const [discussion, setDiscussion] = useState(agent.discussion)
 
   // Skills

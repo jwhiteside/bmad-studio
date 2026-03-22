@@ -21,6 +21,9 @@ type ModuleInfo = {
   agentCount: number
   skillCount: number
   workflowCount: number
+  agents?: Array<{ id: string; name: string; title?: string }>
+  skills?: Array<{ id: string; name: string }>
+  workflows?: Array<{ id: string; name: string }>
 }
 
 type ExportManifest = {
