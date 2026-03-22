@@ -137,7 +137,7 @@ export function AboutPage() {
 
       {/* Footer */}
       <div className="text-xs text-[var(--color-muted)] border-t border-[var(--color-border-subtle)] pt-4">
-        <p>Made by Jonathan Whiteside. Licensed under the MIT License.</p>
+        <p>Made by <a href="https://github.com/jwhiteside" target="_blank" rel="noopener noreferrer" className="text-[var(--color-accent)] hover:underline">Jonathan Whiteside</a>. Licensed under the MIT License.</p>
       </div>
     </div>
   )

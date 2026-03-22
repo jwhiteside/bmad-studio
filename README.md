@@ -98,7 +98,6 @@ packages/
 | **Workflow** | Structured markdown defining a sequence of steps with agents, inputs, and deliverables |
 | **Team** | Named grouping of agents for collaborative workflows and Party Mode |
 | **Module** | Versioned collection of BMAD entities from an external repository |
-| **Package** | Portable bundle of BMAD entities exported for sharing between projects |
 
 For more on the BMAD method, see the [BMAD-METHOD repository](https://github.com/bmadcode/BMAD-METHOD).
 
