@@ -11,6 +11,7 @@ import {
   Briefcase,
   Package,
   FolderTree,
+  BookOpen,
   Settings,
   Moon,
   Sun,
@@ -44,7 +45,7 @@ const utilityItems: Array<{
   badgeKey?: string
 }> = [
   { to: '/outputs', label: 'Outputs', icon: FileOutput },
-  // Packages route not yet implemented — add when /packages page exists
+  { to: '/commands', label: 'Commands', icon: BookOpen },
   { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/files', label: 'Files', icon: FolderTree },
 ]

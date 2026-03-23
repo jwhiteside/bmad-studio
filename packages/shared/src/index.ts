@@ -11,6 +11,7 @@ export type {
 } from './workflows.js'
 export type {
   ConnectionStatus,
+  DataSourceType,
   DataSource,
   DataSourceListItem,
   DataSourceTemplate,

@@ -18,6 +18,8 @@ import { filesPlugin } from './plugins/files-plugin.js'
 import { settingsPlugin } from './plugins/settings-plugin.js'
 import { modulesPlugin } from './plugins/modules-plugin.js'
 import { teamsPlugin } from './plugins/teams-plugin.js'
+import { commandsPlugin } from './plugins/commands-plugin.js'
+import { datasourcesPlugin } from './plugins/datasources-plugin.js'
 import type { ProjectDetectionResult } from './core/project-detector.js'
 
 type CreateAppOptions = {
@@ -92,6 +94,8 @@ export async function createApp(options: CreateAppOptions = {}) {
   await app.register(settingsPlugin)
   await app.register(modulesPlugin)
   await app.register(teamsPlugin)
+  await app.register(commandsPlugin)
+  await app.register(datasourcesPlugin)
 
   if (options.serveStatic !== false) {
     await registerStatic(app)

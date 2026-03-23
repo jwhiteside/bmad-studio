@@ -1,27 +1,30 @@
-export type ConnectionStatus = 'connected' | 'configured' | 'not-configured'
+export type ConnectionStatus = 'connected' | 'configured' | 'synced' | 'error' | 'not-configured'
+
+export type DataSourceType = 'jira' | 'confluence' | 'figma' | 'github' | 'custom'
 
 export type DataSource = {
   id: string
   name: string
-  type: string
+  type: DataSourceType
+  cliTool: string
+  parameters: Record<string, string>
+  outputPath: string
+  lastSync?: string
   status: ConnectionStatus
-  config: Record<string, unknown>
-  lastSync: string | null
-  toolAvailable?: boolean
 }
 
 export type DataSourceListItem = {
   id: string
   name: string
-  type: string
+  type: DataSourceType
   status: ConnectionStatus
-  lastSync: string | null
+  lastSync?: string
 }
 
 export type DataSourceTemplate = {
   id: string
   name: string
-  type: string
+  type: DataSourceType
   description: string
   requiredTool: string
   configSchema: Record<string, unknown>

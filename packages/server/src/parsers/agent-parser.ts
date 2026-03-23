@@ -23,6 +23,24 @@ function extractAgentAttributes(content: string): Partial<Agent> {
   }
 }
 
+function extractPersona(content: string): { identity?: string; communicationStyle?: string; principles?: string } {
+  const personaMatch = content.match(/<persona>([\s\S]*?)<\/persona>/)
+  if (!personaMatch) return {}
+
+  const block = personaMatch[1]
+
+  const getTag = (tag: string): string | undefined => {
+    const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`))
+    return m ? m[1].trim() : undefined
+  }
+
+  return {
+    identity: getTag('identity'),
+    communicationStyle: getTag('communication_style'),
+    principles: getTag('principles'),
+  }
+}
+
 function extractMenuItems(content: string): AgentMenuItem[] {
   const items: AgentMenuItem[] = []
   const itemRegex = /<item\s+([^>]*)>([^<]*)<\/item>/g
@@ -59,6 +77,7 @@ export function parseAgent(filePath: string, content: string): ParseResult<Agent
 
     const xmlAttrs = extractAgentAttributes(body)
     const menuItems = extractMenuItems(body)
+    const persona = extractPersona(body)
 
     const agent: Agent = {
       id: xmlAttrs.id || (frontmatter.name as string) || '',
@@ -72,6 +91,9 @@ export function parseAgent(filePath: string, content: string): ParseResult<Agent
       hasSidecar: false,
       menu: menuItems,
       skills: [],
+      identity: persona.identity,
+      communicationStyle: persona.communicationStyle,
+      principles: persona.principles,
       filePath,
     }
 

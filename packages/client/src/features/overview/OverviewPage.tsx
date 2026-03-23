@@ -1,9 +1,137 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GitBranch, Zap, Plug, Package, Rocket, Users } from 'lucide-react'
+import { GitBranch, Zap, Plug, Package, Rocket, Users, ArrowRight } from 'lucide-react'
 
 import { EmptyState } from '../../shared/EmptyState.js'
 import { WorkflowTypeBadge } from '../workflows/WorkflowsPage.js'
+
+type CommandItem = {
+  module: string
+  phase: string
+  name: string
+  code: string
+  sequence: number | null
+  required: boolean
+  agentDisplayName: string
+  agentTitle: string
+  description: string
+  outputLocation: string
+  command: string
+}
+
+const PHASE_ORDER = ['1-analysis', '2-planning', '3-solutioning', '4-implementation'] as const
+
+function phaseLabel(phase: string): string {
+  const stripped = phase.replace(/^\d+-/, '')
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1)
+}
+
+function PhaseTimeline({ commands }: { commands: CommandItem[] }) {
+  const navigate = useNavigate()
+
+  const phaseGroups = useMemo(() => {
+    const groups = new Map<string, CommandItem[]>()
+    for (const cmd of commands) {
+      const key = cmd.phase || 'anytime'
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(cmd)
+    }
+    for (const [, cmds] of groups) {
+      cmds.sort((a, b) => (a.sequence ?? 999) - (b.sequence ?? 999))
+    }
+    return groups
+  }, [commands])
+
+  const mainPhases = PHASE_ORDER.filter((p) => phaseGroups.has(p))
+  const anytimeCommands = phaseGroups.get('anytime') ?? []
+
+  if (mainPhases.length === 0 && anytimeCommands.length === 0) return null
+
+  return (
+    <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)]">The BMAD Process</h2>
+          <p className="text-xs text-[var(--color-muted)] mt-1">Workflow lifecycle from analysis to implementation</p>
+        </div>
+        <button
+          onClick={() => navigate('/commands')}
+          className="text-sm font-bold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors cursor-pointer"
+        >
+          View all commands &rarr;
+        </button>
+      </div>
+
+      {/* Horizontal phase timeline */}
+      <div className="flex gap-0 overflow-x-auto pb-2">
+        {mainPhases.map((phase, idx) => {
+          const cmds = phaseGroups.get(phase) ?? []
+          return (
+            <div key={phase} className="flex items-start">
+              <div className="min-w-[180px] flex-1">
+                <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-accent)] mb-3 px-1">
+                  {phaseLabel(phase)}
+                </div>
+                <div className="flex flex-wrap gap-1.5 px-1">
+                  {cmds.map((cmd) => (
+                    <div
+                      key={`${cmd.code}-${cmd.module}`}
+                      title={`${cmd.name}\n${cmd.description}`}
+                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs border transition-colors ${
+                        cmd.required
+                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5'
+                          : 'border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]'
+                      }`}
+                    >
+                      {cmd.agentTitle && (
+                        <span className="text-xs leading-none" role="img">
+                          {cmd.agentTitle.match(/\p{Emoji_Presentation}/u)?.[0] ?? ''}
+                        </span>
+                      )}
+                      <span className="font-[var(--font-mono)] font-bold">{cmd.code}</span>
+                      <span className="text-[var(--color-muted)] hidden sm:inline truncate max-w-[80px]">{cmd.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {idx < mainPhases.length - 1 && (
+                <div className="flex items-center pt-8 px-2 text-[var(--color-muted)]">
+                  <ArrowRight size={16} />
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Anytime section */}
+      {anytimeCommands.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-[var(--color-border-subtle)]">
+          <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2 px-1">
+            Anytime
+          </div>
+          <div className="flex flex-wrap gap-1.5 px-1">
+            {anytimeCommands.map((cmd) => (
+              <div
+                key={`${cmd.code}-${cmd.module}`}
+                title={`${cmd.name}\n${cmd.description}`}
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]"
+              >
+                {cmd.agentTitle && (
+                  <span className="text-xs leading-none" role="img">
+                    {cmd.agentTitle.match(/\p{Emoji_Presentation}/u)?.[0] ?? ''}
+                  </span>
+                )}
+                <span className="font-[var(--font-mono)] font-bold">{cmd.code}</span>
+                <span className="text-[var(--color-muted)] hidden sm:inline truncate max-w-[80px]">{cmd.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
 
 type OverviewData = {
   detected: boolean
@@ -26,6 +154,7 @@ type OverviewData = {
         title: string
         icon?: string
         role: string
+        communicationStyle?: string
         skillCount: number
         module?: string
       }>
@@ -61,13 +190,17 @@ const MAX_OVERVIEW_AGENTS = 8
 export function OverviewPage() {
   const navigate = useNavigate()
   const [data, setData] = useState<OverviewData | null>(null)
+  const [commands, setCommands] = useState<CommandItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/overview')
-      .then((r) => r.json())
-      .then((d) => {
-        setData(d as OverviewData)
+    Promise.all([
+      fetch('/api/overview').then((r) => r.json()),
+      fetch('/api/commands').then((r) => r.json()).catch(() => []),
+    ])
+      .then(([overview, cmds]) => {
+        setData(overview as OverviewData)
+        setCommands(cmds as CommandItem[])
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -106,27 +239,43 @@ export function OverviewPage() {
             <SectionHeader title="Agents" count={sections.team.count} to="/agents" />
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {sections.team.agents.filter((a) => a.name || a.title).slice(0, MAX_OVERVIEW_AGENTS).map((agent) => {
-                const displayTitle = agent.title || agent.name
+                const styleSnippet = agent.communicationStyle
+                  ? agent.communicationStyle.length > 60
+                    ? agent.communicationStyle.slice(0, 60) + '...'
+                    : agent.communicationStyle
+                  : undefined
                 return (
                   <button
                     key={agent.id}
                     onClick={() => navigate(`/agents/${agent.id}`)}
                     className="p-4 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] text-left hover:border-[var(--color-accent)] hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer"
                   >
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2.5 mb-2">
                       {agent.icon ? (
-                        <span className="text-lg leading-none" role="img">{agent.icon}</span>
+                        <span className="text-2xl leading-none" role="img">{agent.icon}</span>
                       ) : (
-                        <span className="w-5 h-5 rounded bg-[var(--color-accent)] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                        <span className="w-7 h-7 rounded-lg bg-[var(--color-accent)] text-white text-xs font-bold flex items-center justify-center shrink-0">
                           {agent.name.charAt(0).toUpperCase()}
                         </span>
                       )}
-                      <span className="font-bold text-sm truncate">{displayTitle}</span>
+                      <div className="min-w-0">
+                        <span className="font-bold text-sm block truncate">{agent.name}</span>
+                        {agent.title && (
+                          <span className="text-xs text-[var(--color-muted)] block truncate">{agent.title}</span>
+                        )}
+                      </div>
                     </div>
-                    {agent.title && (
-                      <p className="text-xs text-[var(--color-muted)] truncate">({agent.name})</p>
+                    {styleSnippet && (
+                      <p className="text-xs italic text-[var(--color-muted)] line-clamp-1 mb-1.5">&ldquo;{styleSnippet}&rdquo;</p>
                     )}
-                    <p className="text-xs text-[var(--color-muted)] mt-1">{agent.skillCount} skills</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[var(--color-muted)]">{agent.skillCount} skills</span>
+                      {agent.module && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-[var(--color-muted)]">
+                          {agent.module}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 )
               })}
@@ -208,6 +357,9 @@ export function OverviewPage() {
             </div>
           </section>
         )}
+
+        {/* Phase Timeline */}
+        {commands.length > 0 && <PhaseTimeline commands={commands} />}
 
         {/* Skills — card-style, top items */}
         {sections.toolkit && sections.toolkit.count > 0 && (

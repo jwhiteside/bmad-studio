@@ -17,6 +17,9 @@ export type Agent = {
   hasSidecar: boolean
   menu: AgentMenuItem[]
   skills: string[]
+  identity?: string
+  communicationStyle?: string
+  principles?: string
   conversationalKnowledge?: Record<string, unknown>[]
   customizations?: Record<string, unknown>
   filePath: string
@@ -29,6 +32,7 @@ export type AgentListItem = {
   icon?: string
   role: string
   module?: string
+  communicationStyle?: string
   skillCount: number
   hasOverrides: boolean
 }

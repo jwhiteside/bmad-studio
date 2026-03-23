@@ -7,7 +7,7 @@ import type { TeamListItem } from '@bmad-studio/shared'
 import { useAgentDetail } from './use-agent-detail.js'
 import { useWorkflows } from '../workflows/use-workflows.js'
 import { useTeams } from '../teams/use-teams.js'
-import { SkillAssignment } from './SkillAssignment.js'
+import { SkillAssignmentPanel } from './SkillAssignmentPanel.js'
 import { EditAgentDialog } from './EditAgentDialog.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
 import { useNotifications } from '../../layout/NotificationProvider.js'
@@ -129,6 +129,33 @@ export function AgentDetailPage() {
         </div>
       </div>
 
+      {/* Persona */}
+      {(agent.identity || agent.communicationStyle || agent.principles) && (
+        <section className="mb-8">
+          <h2 className="text-lg font-bold mb-3">Persona</h2>
+          <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-5 space-y-4">
+            {agent.identity && (
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-1">Identity</h3>
+                <p className="text-sm text-[var(--color-text)]">{agent.identity}</p>
+              </div>
+            )}
+            {agent.communicationStyle && (
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-1">Communication Style</h3>
+                <p className="text-sm italic text-[var(--color-text)]">&ldquo;{agent.communicationStyle}&rdquo;</p>
+              </div>
+            )}
+            {agent.principles && (
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-1">Principles</h3>
+                <div className="text-sm text-[var(--color-text)] whitespace-pre-line">{agent.principles}</div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Metadata */}
       <section className="mb-8">
         <h2 className="text-lg font-bold mb-3">Details</h2>
@@ -173,12 +200,12 @@ export function AgentDetailPage() {
         )}
       </section>
 
-      {/* Skill Assignment Panel */}
+      {/* Skill Assignment Panel with Drag-and-Drop */}
       {showSkillAssignment && (
         <div className="fixed inset-0 z-40 flex">
           <div className="flex-1 bg-black/40" onClick={() => setShowSkillAssignment(false)} />
           <div className="w-[700px] bg-[var(--color-bg)] border-l border-[var(--color-border-subtle)] shadow-xl">
-            <SkillAssignment
+            <SkillAssignmentPanel
               agentName={agent.name}
               currentSkills={agent.skills}
               onSave={async (skills) => {

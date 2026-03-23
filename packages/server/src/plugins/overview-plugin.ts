@@ -31,6 +31,7 @@ export async function overviewPlugin(app: FastifyInstance) {
             title: a.title,
             icon: a.icon,
             role: a.role,
+            communicationStyle: a.communicationStyle,
             skillCount: a.skills.length,
             module: a.module,
           })),

@@ -9,6 +9,8 @@ import type { TeamListItem } from '@bmad-studio/shared'
 
 import { EmptyState } from '../../shared/EmptyState.js'
 import { EditModuleDialog } from './EditModuleDialog.js'
+import { ExportPackageDialog } from './ExportPackageDialog.js'
+import { InstallModuleDialog } from './InstallModuleDialog.js'
 import { useDetailParam } from '../../hooks/use-detail-param.js'
 import { SkeletonCard } from '../../shared/Skeleton.js'
 
@@ -524,6 +526,8 @@ export function ModulesPage() {
   const [loading, setLoading] = useState(true)
   const [selectedModule, setSelectedModule] = useDetailParam('detail')
   const [showCreate, setShowCreate] = useState(false)
+  const [showInstall, setShowInstall] = useState(false)
+  const [showExport, setShowExport] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<ModuleInfo | null>(null)
   const [showEdit, setShowEdit] = useState<string | null>(null)
   const [teams, setTeams] = useState<TeamListItem[]>([])
@@ -676,13 +680,29 @@ export function ModulesPage() {
       <div>
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-extrabold">Modules ({modules.length})</h1>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            Create Module
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowExport(true)}
+              className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] hover:bg-[var(--color-surface-raised)] transition-colors flex items-center gap-1.5"
+            >
+              <Upload size={14} />
+              Export Package
+            </button>
+            <button
+              onClick={() => setShowInstall(true)}
+              className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] hover:bg-[var(--color-surface-raised)] transition-colors flex items-center gap-1.5"
+            >
+              <Download size={14} />
+              Install Module
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              Create Module
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -975,6 +995,22 @@ export function ModulesPage() {
             setShowEdit(null)
             loadModules()
           }}
+        />
+      )}
+
+      {showInstall && (
+        <InstallModuleDialog
+          onClose={() => setShowInstall(false)}
+          onInstalled={() => {
+            setShowInstall(false)
+            loadModules()
+          }}
+        />
+      )}
+
+      {showExport && (
+        <ExportPackageDialog
+          onClose={() => setShowExport(false)}
         />
       )}
     </div>

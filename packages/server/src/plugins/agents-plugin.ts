@@ -15,6 +15,7 @@ function agentToListItem(agent: Agent): AgentListItem {
     icon: agent.icon,
     role: agent.role,
     module: agent.module,
+    communicationStyle: agent.communicationStyle,
     skillCount: agent.skills.length,
     hasOverrides:
       agent.customizations !== undefined && Object.keys(agent.customizations).length > 0,

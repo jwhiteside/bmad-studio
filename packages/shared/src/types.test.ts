@@ -58,12 +58,13 @@ describe('shared types', () => {
   it('DataSource type has required fields', () => {
     expectTypeOf<DataSource>().toHaveProperty('id')
     expectTypeOf<DataSource>().toHaveProperty('status')
-    expectTypeOf<DataSource>().toHaveProperty('config')
-    expectTypeOf<DataSource>().toHaveProperty('lastSync')
+    expectTypeOf<DataSource>().toHaveProperty('cliTool')
+    expectTypeOf<DataSource>().toHaveProperty('parameters')
+    expectTypeOf<DataSource>().toHaveProperty('outputPath')
   })
 
   it('ConnectionStatus is a union of expected values', () => {
-    expectTypeOf<ConnectionStatus>().toEqualTypeOf<'connected' | 'configured' | 'not-configured'>()
+    expectTypeOf<ConnectionStatus>().toEqualTypeOf<'connected' | 'configured' | 'synced' | 'error' | 'not-configured'>()
   })
 
   it('Workspace type has required fields', () => {
