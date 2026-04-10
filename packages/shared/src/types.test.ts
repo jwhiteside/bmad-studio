@@ -1,5 +1,6 @@
-import { describe, it, expectTypeOf } from 'vitest'
+import { describe, it, expect, expectTypeOf } from 'vitest'
 
+import { resolveAppTitle, DEFAULT_APP_TITLE } from './config.js'
 import type { Agent, AgentMenuItem } from './agents.js'
 import type { Skill } from './skills.js'
 import type { Workflow, WorkflowStep } from './workflows.js'
@@ -101,6 +102,7 @@ describe('shared types', () => {
   it('StudioSettings type has required fields without index signature', () => {
     expectTypeOf<StudioSettings>().toHaveProperty('port')
     expectTypeOf<StudioSettings>().toHaveProperty('theme')
+    expectTypeOf<StudioSettings>().toHaveProperty('appTitle')
   })
 
   it('AppInfo type has name and version', () => {
@@ -161,5 +163,39 @@ describe('shared types', () => {
     expectTypeOf<ErrorCode>().toEqualTypeOf<
       'NOT_FOUND' | 'VALIDATION_ERROR' | 'CONFLICT' | 'FILE_SYSTEM_ERROR' | 'INTERNAL_ERROR'
     >()
+  })
+})
+
+describe('resolveAppTitle', () => {
+  it('returns DEFAULT_APP_TITLE when settings is null', () => {
+    expect(resolveAppTitle(null)).toBe(DEFAULT_APP_TITLE)
+  })
+  it('returns DEFAULT_APP_TITLE when settings is undefined', () => {
+    expect(resolveAppTitle(undefined)).toBe(DEFAULT_APP_TITLE)
+  })
+  it('returns DEFAULT_APP_TITLE when appTitle field is missing', () => {
+    expect(resolveAppTitle({})).toBe(DEFAULT_APP_TITLE)
+  })
+  it('returns DEFAULT_APP_TITLE when appTitle is an empty string', () => {
+    expect(resolveAppTitle({ appTitle: '' })).toBe(DEFAULT_APP_TITLE)
+  })
+  it('returns DEFAULT_APP_TITLE when appTitle is whitespace-only', () => {
+    expect(resolveAppTitle({ appTitle: '   ' })).toBe(DEFAULT_APP_TITLE)
+  })
+  it('returns the trimmed value when appTitle has surrounding whitespace', () => {
+    expect(resolveAppTitle({ appTitle: '  Acme Studio  ' })).toBe('Acme Studio')
+  })
+  it('returns the value verbatim when appTitle is set normally', () => {
+    expect(resolveAppTitle({ appTitle: 'Acme Studio' })).toBe('Acme Studio')
+  })
+  it('returns DEFAULT_APP_TITLE when appTitle is a non-string (number)', () => {
+    expect(resolveAppTitle({ appTitle: 42 } as unknown as { appTitle?: unknown })).toBe(
+      DEFAULT_APP_TITLE,
+    )
+  })
+  it('returns DEFAULT_APP_TITLE when appTitle is null', () => {
+    expect(resolveAppTitle({ appTitle: null } as unknown as { appTitle?: unknown })).toBe(
+      DEFAULT_APP_TITLE,
+    )
   })
 })

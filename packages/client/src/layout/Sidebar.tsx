@@ -21,6 +21,7 @@ import {
 import { toggleTheme } from '../lib/theme.js'
 import { useThemeStore } from '../stores/ui-store.js'
 import { useWebSocket } from '../hooks/use-websocket.js'
+import { useAppTitle } from '../hooks/use-app-title.js'
 
 const navItems: Array<{
   to: string
@@ -121,6 +122,8 @@ export function Sidebar() {
     }, [fetchBadgeCounts]),
   )
 
+  const appTitle = useAppTitle()
+
   function handleToggleTheme() {
     const next = toggleTheme()
     setTheme(next)
@@ -129,7 +132,7 @@ export function Sidebar() {
   return (
     <aside className="w-60 h-screen flex flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-bg)]">
       <div className="px-4 py-5">
-        <h1 className="text-lg font-extrabold text-[var(--color-text)]">BMAD Studio</h1>
+        <h1 className="text-lg font-extrabold text-[var(--color-text)]">{appTitle}</h1>
       </div>
 
       <nav className="flex-1 px-2 space-y-1">

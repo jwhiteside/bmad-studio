@@ -28,6 +28,7 @@ export type {
   ProjectStatus,
   AppInfo,
 } from './config.js'
+export { DEFAULT_APP_TITLE, resolveAppTitle } from './config.js'
 export type { FileCategory, FileNode } from './files.js'
 export type { ValidationIssue, ValidationResult } from './validation.js'
 export type {

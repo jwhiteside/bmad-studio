@@ -71,6 +71,73 @@ describe('settings-plugin', () => {
     await app.close()
   })
 
+  it('PUT /api/settings preserves pre-existing hidden fields', async () => {
+    const settingsPath = path.join(tmpDir, '.bmad-studio', 'settings.json')
+    // Simulate a user manually adding a hidden field
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({ port: 4040, theme: 'dark', appTitle: 'Acme Studio' }),
+    )
+
+    const app = await createApp({ logger: false, serveStatic: false, project: makeProject(tmpDir) })
+    const resp = await app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      payload: { port: 5050, theme: 'light' },
+    })
+    expect(resp.statusCode).toBe(200)
+    expect(JSON.parse(resp.body).ok).toBe(true)
+
+    const saved = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+    expect(saved.port).toBe(5050)
+    expect(saved.theme).toBe('light')
+    expect(saved.appTitle).toBe('Acme Studio') // Critical: hidden field preserved
+    await app.close()
+  })
+
+  it('PUT /api/settings preserves corrupt existing file as a backup', async () => {
+    const settingsPath = path.join(tmpDir, '.bmad-studio', 'settings.json')
+    fs.writeFileSync(settingsPath, '{not valid json,,}')
+
+    const app = await createApp({ logger: false, serveStatic: false, project: makeProject(tmpDir) })
+    const resp = await app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      payload: { port: 4040, theme: 'dark' },
+    })
+    expect(resp.statusCode).toBe(200)
+    expect(JSON.parse(resp.body).ok).toBe(true)
+
+    // The new file should be valid JSON with the PUT body
+    const saved = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+    expect(saved.port).toBe(4040)
+    expect(saved.theme).toBe('dark')
+
+    // The corrupt original should be preserved as a backup
+    const studioContents = fs.readdirSync(path.join(tmpDir, '.bmad-studio'))
+    const backup = studioContents.find((f) => f.startsWith('settings.json.corrupt-'))
+    expect(backup).toBeDefined()
+    await app.close()
+  })
+
+  it('PUT /api/settings rejects non-object request bodies', async () => {
+    const app = await createApp({ logger: false, serveStatic: false, project: makeProject(tmpDir) })
+    const resp = await app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      payload: [1, 2, 3] as unknown as object,
+    })
+    expect(resp.statusCode).toBe(200)
+    const body = JSON.parse(resp.body)
+    expect(body.ok).toBe(false)
+    expect(body.error).toContain('Invalid request body')
+
+    // Confirm nothing was written to disk
+    const settingsPath = path.join(tmpDir, '.bmad-studio', 'settings.json')
+    expect(fs.existsSync(settingsPath)).toBe(false)
+    await app.close()
+  })
+
   it('GET /api/settings returns defaults without file store', async () => {
     const app = await createApp({ logger: false, serveStatic: false, project: null })
     const resp = await app.inject({ method: 'GET', url: '/api/settings' })

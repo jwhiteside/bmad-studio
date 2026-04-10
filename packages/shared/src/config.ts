@@ -17,6 +17,7 @@ export type StudioSettings = {
   port: number
   theme: 'dark' | 'light'
   customSettings?: Record<string, unknown>
+  appTitle?: string
 }
 
 export type ProjectStatus = {
@@ -30,4 +31,15 @@ export type ProjectStatus = {
 export type AppInfo = {
   name: string
   version: string
+}
+
+export const DEFAULT_APP_TITLE = 'BMAD Studio'
+
+export function resolveAppTitle(
+  settings: { appTitle?: unknown } | null | undefined,
+): string {
+  const raw = settings?.appTitle
+  if (typeof raw !== 'string') return DEFAULT_APP_TITLE
+  const value = raw.trim()
+  return value ? value : DEFAULT_APP_TITLE
 }

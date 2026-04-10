@@ -28,13 +28,38 @@ export async function settingsPlugin(app: FastifyInstance) {
       return { ok: true }
     }
 
+    const body = request.body
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return { ok: false, error: 'Invalid request body: expected JSON object' }
+    }
+
     const studioDir = app.fileStore.studioDir
     if (!fs.existsSync(studioDir)) {
       fs.mkdirSync(studioDir, { recursive: true })
     }
 
     const settingsPath = path.join(studioDir, 'settings.json')
-    const content = JSON.stringify(request.body, null, 2)
+
+    // Read existing settings (if any) so unknown/hidden fields like `appTitle`
+    // are preserved across saves from the Settings UI.
+    let existing: Record<string, unknown> = {}
+    if (fs.existsSync(settingsPath)) {
+      try {
+        existing = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>
+      } catch {
+        // Preserve the corrupt file so the user can rescue any hand-edits
+        // before we clobber it with the merged result.
+        try {
+          fs.renameSync(settingsPath, `${settingsPath}.corrupt-${Date.now()}`)
+        } catch {
+          // best-effort backup; don't block the save
+        }
+        existing = {}
+      }
+    }
+
+    const merged = { ...existing, ...(body as Record<string, unknown>) }
+    const content = JSON.stringify(merged, null, 2)
     const result = writeFile(settingsPath, content, studioDir)
 
     if (!result.ok) {
