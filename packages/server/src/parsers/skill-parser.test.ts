@@ -40,11 +40,12 @@ Content here.
     }
   })
 
-  it('handles missing frontmatter gracefully', () => {
-    const result = parseSkill('plain.md', 'Just plain markdown without frontmatter.')
+  it('handles missing frontmatter by falling back to directory name', () => {
+    const result = parseSkill('/projects/test/_bmad/core/skills/my-skill/SKILL.md', 'Just plain markdown without frontmatter.')
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.data.id).toBe('')
+      expect(result.data.id).toBe('my-skill')
+      expect(result.data.name).toBe('my-skill')
       expect(result.data.content).toBe('Just plain markdown without frontmatter.')
     }
   })
