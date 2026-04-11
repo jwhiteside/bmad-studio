@@ -1,0 +1,61 @@
+skills:
+  - canonicalId: dept-opti-performance-audit
+    type: skill
+    description: Audit Optimizely implementation for performance issues across CMS 12, SaaS CMS, and headless front-ends
+    version: "1.0"
+    tags:
+      - optimizely
+      - performance
+      - audit
+      - cms12
+      - saascms
+      - headless
+      - dxpcloud
+    author: BMAD Performance Specialist
+    department: dept-optimizely
+    workflows:
+      - id: perf-audit-v1
+        name: Performance Audit Workflow
+        stages:
+          - name: Discovery
+            duration: "30 minutes"
+            handler: step-01-init.md
+          - name: Analysis
+            duration: "2-3 hours"
+            handler: step-02-audit.md
+          - name: Reporting
+            duration: "1 hour"
+            handler: completion.md
+    inputs:
+      - name: optimizely-instance
+        type: url
+        required: true
+        description: Optimizely CMS instance URL
+      - name: platform-type
+        type: enum
+        values: ["CMS 12", "SaaS CMS", "Headless"]
+        required: true
+        description: Deployment platform type
+      - name: monitoring-dashboard
+        type: url
+        required: false
+        description: Link to Dynatrace, Application Insights, or Google Analytics dashboard
+    outputs:
+      - name: audit-report
+        type: document
+        format: markdown
+        description: Comprehensive performance audit report with recommendations
+      - name: recommendations-spreadsheet
+        type: spreadsheet
+        format: xlsx
+        description: Scored recommendations with impact, effort, and prioritization
+      - name: implementation-roadmap
+        type: document
+        format: markdown
+        description: Operational runbook for implementing recommendations
+    success-criteria:
+      - All three deployment patterns covered
+      - Minimum 10 actionable recommendations
+      - All recommendations scored and prioritized
+      - Baseline metrics documented
+      - Stakeholder decision menu provided

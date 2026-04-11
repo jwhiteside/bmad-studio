@@ -1,0 +1,9 @@
+bundle:
+  name: Ecosystem Strategy Team
+  icon: 🌐
+  description: Strategic ecosystem assessment and planning team.
+agents:
+  - ecosystem-consultant
+  - integration-architect
+  - shopify-specialist
+party: "./default-party.csv"

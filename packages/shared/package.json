@@ -1,6 +1,6 @@
 {
   "name": "@bmad-studio/shared",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Shared types and constants for BMAD Studio",
   "type": "module",
   "main": "./src/index.ts",

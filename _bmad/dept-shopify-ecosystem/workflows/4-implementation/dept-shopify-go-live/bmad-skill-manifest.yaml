@@ -1,0 +1,40 @@
+---
+name: Shopify Ecosystem Go-Live
+id: dept-shopify-go-live
+type: skill
+version: 1.0.0
+description: >
+  Go/no-go assessment and final go-live preparation for Shopify
+  ecosystem. Includes final checklists, cutover planning, rollback
+  procedures, and go-live execution plan.
+category: BMAD/ShopifyEcosystem/Implementation
+tags:
+  - go-live
+  - cutover
+  - rollback
+  - launch
+author: BMAD Shopify Ecosystem CoE
+created: 2026-04-02
+updated: 2026-04-02
+
+inputs:
+  - name: validation_reports
+    type: document
+    required: true
+    description: "Validation reports showing all integrations ready"
+  - name: implementation_status
+    type: document
+    required: true
+    description: "Status of all implementation activities"
+  - name: training_completion
+    type: document
+    required: false
+    description: "Evidence of user training completion"
+
+outputs:
+  - name: go_live_plan
+    type: document
+    format: markdown
+    description: "Final go-live plan with cutover sequence, rollback procedures, and sign-off"
+
+workflow: workflow.md

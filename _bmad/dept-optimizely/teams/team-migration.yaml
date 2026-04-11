@@ -1,0 +1,11 @@
+bundle:
+  name: Optimizely Migration Team
+  icon: 🔄
+  description: Migration specialists for content transfer to Optimizely platforms.
+agents:
+  - content-migration
+  - content-analyst
+  - qa-engineer
+  - devops-engineer
+  - project-manager
+party: "./default-party.csv"

@@ -1,6 +1,6 @@
 {
   "name": "bmad-studio",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Browser-based admin interface for BMAD agentic engineering framework — visualize, configure, and manage your BMAD project",
   "type": "module",
   "workspaces": [

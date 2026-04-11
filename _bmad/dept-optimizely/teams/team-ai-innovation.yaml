@@ -1,0 +1,10 @@
+bundle:
+  name: Optimizely AI & Innovation Team
+  icon: 🤖
+  description: Specialists for Opal AI agent design, Content Graph optimisation, and intelligent content workflows.
+agents:
+  - opal-specialist
+  - graph-specialist
+  - saas-developer
+  - content-analyst
+party: "./default-party.csv"

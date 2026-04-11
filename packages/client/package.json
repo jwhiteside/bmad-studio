@@ -1,6 +1,6 @@
 {
   "name": "@bmad-studio/client",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "BMAD Studio client — React SPA",
   "type": "module",
   "private": true,

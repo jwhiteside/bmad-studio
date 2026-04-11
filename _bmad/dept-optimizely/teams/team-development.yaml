@@ -1,0 +1,12 @@
+bundle:
+  name: Optimizely Development Team
+  icon: 💻
+  description: Core development specialists for CMS 12, SaaS CMS, and headless implementation.
+agents:
+  - optimizely-architect
+  - optimizely-developer
+  - saas-developer
+  - front-end-developer
+  - qa-engineer
+  - graph-specialist
+party: "./default-party.csv"

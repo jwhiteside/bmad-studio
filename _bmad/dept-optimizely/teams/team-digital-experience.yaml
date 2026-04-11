@@ -1,0 +1,12 @@
+bundle:
+  name: Optimizely Digital Experience Team
+  icon: 🌐
+  description: Specialists for CMP, Opal AI, and commerce integration alongside CMS delivery.
+agents:
+  - optimizely-architect
+  - cmp-specialist
+  - opal-specialist
+  - commerce-specialist
+  - content-analyst
+  - front-end-developer
+party: "./default-party.csv"

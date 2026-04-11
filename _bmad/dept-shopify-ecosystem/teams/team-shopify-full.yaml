@@ -1,0 +1,24 @@
+bundle:
+  name: Full Shopify Ecosystem Team
+  icon: 🚀
+  description: All Shopify ecosystem specialists for complete programme delivery.
+agents:
+  - ecosystem-consultant
+  - integration-architect
+  - shopify-specialist
+  - akeneo-specialist
+  - attentive-specialist
+  - bloomreach-specialist
+  - bluestone-specialist
+  - contentstack-specialist
+  - global-e-specialist
+  - gorgias-specialist
+  - inriver-specialist
+  - klaviyo-specialist
+  - loop-specialist
+  - nosto-specialist
+  - rebuy-specialist
+  - recharge-specialist
+  - swap-specialist
+  - yotpo-specialist
+party: "./default-party.csv"

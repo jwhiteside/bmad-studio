@@ -1,0 +1,72 @@
+apiVersion: bmad.optimizely.io/v1alpha1
+kind: Skill
+metadata:
+  name: dept-opti-migration-validate
+  namespace: dept-optimizely
+  labels:
+    phase: implementation
+    platform: optimizely
+    component: data-validation
+spec:
+  title: Validate Migration and Prepare Go-Live
+  description: Verify migrated content, validate SEO, test redirects, and prepare go-live cutover plan
+  type: skill
+  category:
+    - data-validation
+    - seo-validation
+    - go-live-preparation
+  cmsTarget:
+    - cms12
+    - saas-cms
+  phase: 4-implementation
+  complexity: medium
+  estimatedDuration: "3-5 days"
+  author: BMAD CMS Optimizely
+  version: "1.0.0"
+  prerequisites:
+    - dept-opti-migration-execute
+  inputs:
+    - name: migrated-content
+      type: directory
+      required: true
+      description: Content migrated to target CMS
+    - name: migration-report
+      type: document
+      required: true
+      description: Wave execution reports
+    - name: content-inventory
+      type: document
+      required: true
+      description: Source and target content lists
+  outputs:
+    - name: validation-report
+      type: document
+      description: Content completeness, quality, SEO, performance findings
+    - name: cutover-plan
+      type: document
+      description: Go-live schedule, rollback procedure, monitoring
+    - name: go-live-checklist
+      type: document
+      description: Signed-off pre-cutover checklist
+  successCriteria:
+    - Content completeness >= 99%
+    - Content quality >= 99%
+    - URL redirects working >= 99%
+    - SEO metadata validated
+    - Performance baseline verified
+    - Zero critical blockers to go-live
+  steps:
+    - name: step-01-init
+      displayName: Validation Setup
+      description: Load reports, define validation criteria
+    - name: step-02-validate
+      displayName: Content Validation and Go-Live Prep
+      description: Validate completeness, quality, URLs, SEO, performance, create cutover plan
+  relatedWorkflows:
+    - dept-opti-migration-execute
+    - dept-opti-migration-strategy
+  tags:
+    - data-validation
+    - seo-validation
+    - go-live-preparation
+    - cutover-planning

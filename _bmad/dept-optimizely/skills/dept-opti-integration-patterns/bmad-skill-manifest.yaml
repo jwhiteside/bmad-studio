@@ -1,0 +1,33 @@
+skill:
+  canonicalId: dept-opti-integration-patterns
+  name: Optimizely Integration Architecture Patterns
+  description: Comprehensive patterns for integrating Optimizely with enterprise systems including Content Graph, commerce, CMP, third-party platforms, and Opal AI while maintaining performance, reliability, and data consistency.
+  domain: optimizely
+  category: integration
+  version: 1.0.0
+
+relevantAgents:
+  - optimizely-architect
+  - optimizely-developer
+  - saas-developer
+  - devops-engineer
+
+relatedSkills:
+  - dept-opti-content-governance
+  - dept-opti-testing-strategy
+  - dept-opti-security
+
+topics:
+  - Content Graph Integration
+  - Webhook Architecture
+  - Commerce-CMS Integration
+  - CMP Publishing Integration
+  - Opal AI Automation
+  - Third-Party Integrations
+  - API Design
+  - Authentication Patterns
+  - Error Handling
+  - DXP Cloud Constraints
+
+author: BMAD Optimizely Specialists
+lastUpdated: 2026-03-31

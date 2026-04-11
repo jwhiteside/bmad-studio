@@ -1,0 +1,35 @@
+skill:
+  canonicalId: dept-opti-security
+  name: Optimizely Security Patterns
+  description: Comprehensive security patterns for Optimizely implementations covering CMS 12 access control, SaaS CMS authentication, API security, data protection, DXP Cloud security, compliance requirements, and OWASP considerations.
+  domain: optimizely
+  category: security
+  version: 1.0.0
+
+relevantAgents:
+  - optimizely-architect
+  - devops-engineer
+  - qa-engineer
+
+relatedSkills:
+  - dept-opti-integration-patterns
+  - dept-opti-content-governance
+  - dept-opti-testing-strategy
+
+topics:
+  - CMS 12 RBAC
+  - Virtual Role Providers
+  - SaaS CMS Authentication
+  - API Security
+  - Content Access Control
+  - Webhook Security
+  - DXP Cloud Security
+  - Secrets Management
+  - Commerce PCI Compliance
+  - Opal AI Safety
+  - OWASP Prevention
+  - GDPR Compliance
+  - Security Testing
+
+author: BMAD Optimizely Specialists
+lastUpdated: 2026-03-31

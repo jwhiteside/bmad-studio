@@ -1,0 +1,114 @@
+---
+name: Migration Plan for Optimizely Content
+id: dept-opti-migration-plan
+type: skill
+version: 1.0.0
+description: >
+  Create phased content migration plan from source system to Optimizely.
+  Includes content model mapping, wave planning, effort estimates, URL redirect
+  strategy, and migration-specific risk register.
+category: BMAD/Optimizely/Planning
+tags:
+  - migration
+  - migration-plan
+  - optimizely
+  - content-migration
+  - phased-rollout
+  - risk-management
+author: BMAD Migration Practice
+created: 2026-03-31
+updated: 2026-03-31
+
+# Inputs and outputs
+inputs:
+  - name: source_audit_report
+    type: document
+    required: true
+    description: "Content inventory and complexity assessment from source audit"
+  - name: content_model
+    type: document
+    required: true
+    description: "Approved target content model from content modelling workflow"
+  - name: architecture_decision_records
+    type: document
+    required: true
+    description: "ADRs including integration and sync strategy from architecture"
+  - name: technical_architecture
+    type: document
+    required: true
+    description: "Deployment architecture and environment setup"
+
+outputs:
+  - name: migration_plan_document
+    type: document
+    format: markdown_yaml
+    description: "Complete migration plan with all sections"
+  - name: content_model_mapping
+    type: table
+    format: markdown
+    description: "Source content types → Target types with field mappings"
+  - name: field_transformation_rules
+    type: document
+    format: markdown
+    description: "How each field transforms from source to target (rules, scripts, lookups)"
+  - name: migration_wave_plan
+    type: table
+    format: markdown
+    description: "Waves sequenced, with content types, volume, effort, timeline"
+  - name: url_redirect_map
+    type: table
+    format: markdown
+    description: "Source URLs → Target URLs; 301 redirects for moved content"
+  - name: risk_register
+    type: table
+    format: markdown
+    description: "Migration-specific risks with likelihood, impact, mitigations"
+  - name: migration_roadmap
+    type: document
+    format: markdown
+    description: "Week-by-week detailed roadmap (content prep, migration, validation)"
+
+# Workflow delegation
+workflow: workflow.md
+
+# Success metrics
+success_metrics:
+  - "Complete source-to-target content type mapping"
+  - "Field transformation rules documented for all fields"
+  - "Migration waves sequenced by dependency and complexity"
+  - "Effort estimates realistic (hours, resources, risk buffer)"
+  - "URL/redirect strategy complete and executable"
+  - "Content freeze schedule set and communicated"
+  - "Exit criteria defined (how to know each wave passed)"
+  - "Migration-specific risk register built"
+  - "Week-by-week roadmap detailed with owners and milestones"
+  - "Stakeholders understand plan, timeline, and resource needs"
+
+# Failure modes
+failure_modes:
+  - name: "Source and target models don't align"
+    mitigation: "Design transformation rules and custom logic; gate decisions"
+  - name: "Content volume larger than expected"
+    mitigation: "Refine estimates; potentially add wave; reduce scope"
+  - name: "Content quality worse than expected"
+    mitigation: "Plan additional cleanup work; extend timeline"
+  - name: "Integration issues discovered late"
+    mitigation: "Early integration spikes; test Commerce/CRM sync before wave 1"
+  - name: "Resource constraints limit migration pace"
+    mitigation: "Hire contractors; extend timeline; reduce scope"
+
+# Roles and permissions
+roles:
+  - name: Migration Manager
+    description: "Overall migration planning and execution"
+    permissions:
+      - plan_migration
+      - manage_waves
+      - coordinate_teams
+      - track_progress
+  - name: Content Operations Lead
+    description: "Content team lead managing source data and validations"
+    permissions:
+      - audit_source_content
+      - validate_migrations
+      - coordinate_content_team

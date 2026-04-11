@@ -1,6 +1,6 @@
 {
   "name": "@bmad-studio/server",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "BMAD Studio server — Fastify API serving BMAD project data",
   "type": "module",
   "main": "./src/index.ts",

@@ -1,0 +1,66 @@
+---
+name: Shopify Ecosystem Assessment
+id: dept-shopify-ecosystem-assessment
+type: skill
+version: 1.0.0
+description: >
+  Comprehensive assessment of current or proposed Shopify ecosystem composition.
+  Evaluates business profile, identifies anti-patterns in existing stack,
+  recommends appropriate ecosystem pattern (Starter Plus, Content-Rich,
+  Global Enterprise, Subscription-First, D2C Growth, or Headless Commerce),
+  and produces prioritized improvement recommendations.
+category: BMAD/ShopifyEcosystem/Analysis
+tags:
+  - ecosystem
+  - assessment
+  - platform-selection
+  - anti-patterns
+author: BMAD Shopify Ecosystem CoE
+created: 2026-04-02
+updated: 2026-04-02
+
+inputs:
+  - name: business_profile
+    type: document
+    required: true
+    description: "Business context including revenue, SKU count, channels, geographies, team size, and growth stage"
+  - name: current_stack
+    type: document
+    required: false
+    description: "Existing platform inventory and integration landscape (optional, if assessing current ecosystem)"
+  - name: strategic_priorities
+    type: document
+    required: false
+    description: "Business strategic priorities and constraints"
+
+outputs:
+  - name: assessment_report
+    type: document
+    format: markdown
+    description: "Comprehensive ecosystem assessment with analysis, anti-pattern findings, pattern recommendation, and prioritized recommendations"
+
+workflow: workflow.md
+
+success_metrics:
+  - "Assessment identifies all relevant anti-patterns in current stack (if applicable)"
+  - "Recommended pattern aligns with business profile characteristics"
+  - "Gap analysis clearly identifies what needs to be added/changed"
+  - "Recommendations are specific, prioritized, and actionable"
+
+failure_modes:
+  - name: "Incomplete business profile"
+    mitigation: "Request clarification on missing business context before proceeding with pattern matching"
+  - name: "Conflicting business requirements"
+    mitigation: "Identify tradeoffs and present multiple pattern options with pros/cons"
+
+roles:
+  - name: Strategy Lead
+    description: "Responsible for understanding business context and making final pattern decision"
+    permissions:
+      - review-assessment
+      - approve-recommendations
+  - name: Technical Architect
+    description: "Validates technical feasibility of recommended pattern"
+    permissions:
+      - review-technical-analysis
+      - contribute-anti-pattern-assessment

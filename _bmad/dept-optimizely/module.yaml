@@ -1,0 +1,42 @@
+code: dept-optimizely
+name: "DEPT Optimizely DXP Module"
+description: "Expert Optimizely delivery team covering CMS 12 (PaaS), SaaS CMS, Content Graph, Commerce, CMP, Opal AI, and DXP Cloud"
+default_selected: true
+
+# Variables from Core Config inserted:
+## user_name
+## communication_language
+## document_output_language
+## output_folder
+
+project_name:
+  prompt: "What is your project called?"
+  default: "{directory_name}"
+  result: "{value}"
+
+planning_artifacts:
+  prompt: "Where should Optimizely planning artifacts be stored? (Architecture, content models, migration plans, platform assessments)"
+  default: "/Users/jwhiteside/Code/bmad-studio/_bmad-output/optimizely-planning"
+  result: "/Users/jwhiteside/Code/bmad-studio/{value}"
+
+implementation_artifacts:
+  prompt: "Where should Optimizely implementation artifacts be stored? (Code reviews, component specs, deployment configs)"
+  default: "/Users/jwhiteside/Code/bmad-studio/_bmad-output/optimizely-implementation"
+  result: "/Users/jwhiteside/Code/bmad-studio/{value}"
+
+migration_artifacts:
+  prompt: "Where should Optimizely migration artifacts be stored? (Source audits, wave plans, validation reports)"
+  default: "/Users/jwhiteside/Code/bmad-studio/_bmad-output/optimizely-migration"
+  result: "/Users/jwhiteside/Code/bmad-studio/{value}"
+
+project_knowledge:
+  prompt: "Where should long-term project knowledge be stored? (docs, research, references)"
+  default: "docs"
+  result: "/Users/jwhiteside/Code/bmad-studio/{value}"
+
+# Directories to create during installation
+directories:
+  - "{planning_artifacts}"
+  - "{implementation_artifacts}"
+  - "{migration_artifacts}"
+  - "{project_knowledge}"

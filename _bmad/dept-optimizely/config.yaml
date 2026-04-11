@@ -1,0 +1,13 @@
+# dept-optimizely Module Configuration
+# Optimizely Development Module for BMAD Method
+# Version: 1.0.0
+
+project_name: dept-optimizely
+user_name: "{core:user_name}"
+communication_language: "{core:communication_language}"
+document_output_language: "{core:document_output_language}"
+output_folder: "/Users/jwhiteside/Code/bmad-studio/_bmad-output"
+planning_artifacts: "/Users/jwhiteside/Code/bmad-studio/_bmad-output/optimizely-planning"
+implementation_artifacts: "/Users/jwhiteside/Code/bmad-studio/_bmad-output/optimizely-implementation"
+migration_artifacts: "/Users/jwhiteside/Code/bmad-studio/_bmad-output/optimizely-migration"
+project_knowledge: "/Users/jwhiteside/Code/bmad-studio/docs"

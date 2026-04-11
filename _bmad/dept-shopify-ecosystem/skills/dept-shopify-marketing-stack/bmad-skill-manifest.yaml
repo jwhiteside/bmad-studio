@@ -1,0 +1,15 @@
+skills:
+  - canonicalId: dept-shopify-marketing-stack
+    type: skill
+    description: Marketing technology platform selection, orchestration, and closed-loop patterns for email, SMS, personalization, reviews, and loyalty
+    tags:
+      - marketing
+      - email
+      - sms
+      - personalization
+      - reviews
+      - loyalty
+      - klaviyo
+    version: "1.0"
+    author: "BMAD Shopify Ecosystem CoE"
+    lastUpdated: "2026-04-02"

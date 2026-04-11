@@ -1,0 +1,15 @@
+skills:
+  - canonicalId: dept-opti-reference
+    type: skill
+    description: Comprehensive Optimizely platform reference covering CMS 12 architecture, SaaS CMS design, Content Graph fundamentals, Commerce integration, DXP Cloud deployment, CMP workflows, and Opal AI agent framework with code examples and best practices.
+    tags:
+      - optimizely
+      - reference
+      - architecture
+      - cms
+      - content-graph
+      - commerce
+      - dxp-cloud
+    version: "2.0"
+    author: "BMAD Optimizely CoE"
+    lastUpdated: "2024"

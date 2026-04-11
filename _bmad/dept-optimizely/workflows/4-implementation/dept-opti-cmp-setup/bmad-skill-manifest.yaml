@@ -1,0 +1,68 @@
+apiVersion: bmad.optimizely.io/v1alpha1
+kind: Skill
+metadata:
+  name: dept-opti-cmp-setup
+  namespace: dept-optimizely
+  labels:
+    phase: implementation
+    platform: optimizely
+    component: campaign-management
+spec:
+  title: Configure CMP for Editorial Workflows
+  description: Set up Optimizely CMP with campaigns, approval routing, CMS integration, and team training
+  type: skill
+  category:
+    - campaign-management
+    - editorial-workflow
+    - integration
+  cmsTarget:
+    - cms12
+    - saas-cms
+  phase: 4-implementation
+  complexity: medium
+  estimatedDuration: "2-3 days"
+  author: BMAD CMS Optimizely
+  version: "1.0.0"
+  inputs:
+    - name: editorial-requirements
+      type: document
+      required: true
+      description: Campaign types, workflow requirements, team structure
+    - name: cms-integration-details
+      type: document
+      required: true
+      description: CMS publishing connection details
+  outputs:
+    - name: cmp-configuration
+      type: directory
+      description: Campaign templates, workflows, approval rules
+    - name: integration-documentation
+      type: document
+      description: CMS integration setup and verification
+    - name: training-materials
+      type: document
+      description: User guides and operational runbook
+    - name: go-live-checklist
+      type: document
+      description: CMP readiness sign-off
+  successCriteria:
+    - Campaign types configured
+    - Approval workflows tested
+    - CMS integration validated
+    - Editorial team trained
+    - Reporting functional
+  steps:
+    - name: step-01-init
+      displayName: CMP Requirements Discovery
+      description: Document campaign types, workflows, roles, and CMS integration needs
+    - name: step-02-configure
+      displayName: CMP Configuration and Integration
+      description: Configure workflows, integrate CMS, train team, validate go-live
+  relatedWorkflows:
+    - dept-opti-build-component
+    - dept-opti-migration-validate
+  tags:
+    - campaign-management-platform
+    - editorial-workflow
+    - approval-routing
+    - cms-integration

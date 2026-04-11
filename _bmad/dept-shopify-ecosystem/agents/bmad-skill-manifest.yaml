@@ -1,0 +1,105 @@
+# BMAD dept-shopify-ecosystem Agent Manifest
+# Defines all 18 specialist agents for Shopify ecosystem implementations
+# Version: 1.0.0
+
+agents:
+  - canonicalId: ecosystem-consultant
+    type: agent
+    description: Ecosystem Strategy Consultant orchestrating platform selection, composition, and integration sequencing across the Shopify partner ecosystem
+
+  - canonicalId: integration-architect
+    type: agent
+    description: Integration Architect specialising in data flow design, middleware patterns, webhook orchestration, and cross-platform sync for Shopify ecosystems
+
+  - canonicalId: shopify-specialist
+    type: agent
+    description: Shopify Plus Specialist managing Storefront API, Admin API, Hydrogen/Remix, checkout extensibility, and metafields/metaobjects
+
+  - canonicalId: akeneo-specialist
+    type: agent
+    description: Akeneo PIM Specialist managing product data modelling, family/attribute design, channel syndication, and Shopify integration
+
+  - canonicalId: attentive-specialist
+    type: agent
+    description: Attentive SMS Specialist managing SMS marketing configuration, compliance (TCPA/GDPR), subscriber lifecycle, and Shopify integration
+
+  - canonicalId: bloomreach-specialist
+    type: agent
+    description: Bloomreach Specialist managing search and personalisation engines, behavioural ML, product feeds, and Shopify integration
+
+  - canonicalId: bluestone-specialist
+    type: agent
+    description: Bluestone PIM Specialist managing lightweight PIM deployment for mid-market and Shopify integration
+
+  - canonicalId: contentstack-specialist
+    type: agent
+    description: Contentstack Specialist managing headless CMS content modelling, API-first architecture, and Hydrogen integration
+
+  - canonicalId: global-e-specialist
+    type: agent
+    description: Global-e Specialist managing cross-border commerce, checkout localisation, duty/tax calculation, and multi-currency configuration
+
+  - canonicalId: gorgias-specialist
+    type: agent
+    description: Gorgias Specialist managing customer support platform configuration, unified inbox, and Shopify order integration
+
+  - canonicalId: inriver-specialist
+    type: agent
+    description: Inriver PIM Specialist managing enterprise PIM, complex variant management, and nested product hierarchies
+
+  - canonicalId: klaviyo-specialist
+    type: agent
+    description: Klaviyo Specialist managing email marketing, customer segmentation, flow automation, and Shopify integration
+
+  - canonicalId: loop-specialist
+    type: agent
+    description: Loop Specialist managing returns platform configuration, refund automation, and Shopify integration
+
+  - canonicalId: nosto-specialist
+    type: agent
+    description: Nosto Specialist managing lightweight personalisation, product recommendations, and Shopify integration
+
+  - canonicalId: rebuy-specialist
+    type: agent
+    description: Rebuy Specialist managing post-purchase optimisation, smart cart, upsells, and Shopify checkout integration
+
+  - canonicalId: recharge-specialist
+    type: agent
+    description: Recharge Specialist managing subscription commerce, recurring revenue, and Shopify order syncing
+
+  - canonicalId: swap-specialist
+    type: agent
+    description: Swap Specialist managing alternative returns platform configuration and Shopify integration
+
+  - canonicalId: yotpo-specialist
+    type: agent
+    description: Yotpo Specialist managing reviews, user-generated content, loyalty programmes, and Shopify integration
+
+skills:
+  - canonicalId: dept-shopify-setup
+    type: skill
+    description: Guided setup for a new Shopify ecosystem project including platform selection, ecosystem composition strategy, reference material configuration, and project context documentation
+
+  - canonicalId: dept-shopify-reference
+    type: skill
+    description: Comprehensive Shopify partner ecosystem reference covering 18+ platforms, integration patterns, capabilities matrix, and comparative analysis
+
+  - canonicalId: dept-shopify-integration-patterns
+    type: skill
+    description: Integration architecture patterns for Shopify ecosystem including webhook orchestration, middleware patterns, data flow design, event schemas, and middleware comparison
+
+  - canonicalId: dept-shopify-pim-strategy
+    type: skill
+    description: PIM selection and strategy for Shopify including Akeneo vs Bluestone vs Inriver evaluation, data modelling patterns, channel syndication, and Shopify connector configuration
+
+  - canonicalId: dept-shopify-marketing-stack
+    type: skill
+    description: Marketing technology selection and orchestration including email (Klaviyo), SMS (Attentive), personalisation (Bloomreach/Nosto), reviews (Yotpo), and campaign coordination patterns
+
+  - canonicalId: dept-shopify-data-flows
+    type: skill
+    description: Data flow patterns for Shopify ecosystem including product data flow, customer data flow, order data flow, single source of truth design, and sync reliability patterns
+
+  - canonicalId: dept-shopify-cost-analysis
+    type: skill
+    description: Cost estimation and optimisation for Shopify ecosystem including platform overlap analysis, integration cost factors, feature-cost trade-offs, and vendor consolidation strategies

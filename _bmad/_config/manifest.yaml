@@ -31,11 +31,18 @@ modules:
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
-  - name: dept-aem
+  - name: dept-optimizely
     version: 1.0.0
-    installDate: '2026-03-21T13:02:12.857Z'
-    lastUpdated: '2026-03-21T13:02:12.857Z'
-    source: custom
+    installDate: '2026-04-11T16:20:07.101Z'
+    lastUpdated: '2026-04-11T16:20:07.101Z'
+    source: local
+    npmPackage: null
+    repoUrl: /Users/jwhiteside/Code/bmad-studio/docs/modules/dept-optimizely
+  - name: dept-shopify-ecosystem
+    version: 1.0.0
+    installDate: '2026-04-11T16:21:11.881Z'
+    lastUpdated: '2026-04-11T16:21:11.881Z'
+    source: zip
     npmPackage: null
     repoUrl: null
 ides:

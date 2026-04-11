@@ -1,0 +1,12 @@
+bundle:
+  name: PIM Strategy Team
+  icon: 📦
+  description: PIM specialists for product data management strategy and implementation.
+agents:
+  - ecosystem-consultant
+  - shopify-specialist
+  - akeneo-specialist
+  - bluestone-specialist
+  - inriver-specialist
+  - integration-architect
+party: "./default-party.csv"

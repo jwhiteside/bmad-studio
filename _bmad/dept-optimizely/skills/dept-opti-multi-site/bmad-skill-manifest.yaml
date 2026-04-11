@@ -1,0 +1,32 @@
+skill:
+  canonicalId: dept-opti-multi-site
+  name: Optimizely Multi-Site and Multi-Language Architecture
+  description: Comprehensive patterns for managing multiple sites and languages in Optimizely including site definitions, content organization, translation workflows, regional governance, multi-brand architecture, and multi-market deployment strategies.
+  domain: optimizely
+  category: architecture
+  version: 1.0.0
+
+relevantAgents:
+  - optimizely-architect
+  - content-analyst
+  - project-manager
+
+relatedSkills:
+  - dept-opti-content-governance
+  - dept-opti-integration-patterns
+  - dept-opti-testing-strategy
+
+topics:
+  - CMS 12 Multi-Site Configuration
+  - Domain Mapping
+  - Content Organization
+  - Language Management
+  - Translation Workflows
+  - Regional Governance
+  - Multi-Brand Architecture
+  - Multi-Market Deployment
+  - Content Graph Multi-Language
+  - Commerce Multi-Market
+
+author: BMAD Optimizely Specialists
+lastUpdated: 2026-03-31

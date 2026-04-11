@@ -1,0 +1,13 @@
+skills:
+  - canonicalId: dept-opti-docs-search
+    type: skill
+    description: Expert guidance for searching and navigating official Optimizely documentation including structure overview, quick reference links, documentation features, and strategies for finding information across CMS 12, SaaS CMS, Content Graph, Commerce, DXP Cloud, CMP, and Opal AI products.
+    tags:
+      - optimizely
+      - documentation
+      - search
+      - reference
+      - learning
+    version: "1.0"
+    author: "BMAD Optimizely CoE"
+    lastUpdated: "2024"

@@ -1,0 +1,35 @@
+skill:
+  canonicalId: dept-opti-testing-strategy
+  name: Optimizely Testing Strategy Patterns
+  description: Comprehensive testing patterns for Optimizely implementations covering CMS 12 backend testing, SaaS CMS validation, front-end component testing, content migration validation, performance testing, accessibility compliance, and AI agent evaluation.
+  domain: optimizely
+  category: testing
+  version: 1.0.0
+
+relevantAgents:
+  - qa-engineer
+  - optimizely-developer
+  - saas-developer
+  - front-end-developer
+
+relatedSkills:
+  - dept-opti-integration-patterns
+  - dept-opti-content-governance
+  - dept-opti-multi-site
+
+topics:
+  - CMS 12 Unit Testing
+  - Integration Testing
+  - Content Type Testing
+  - SaaS CMS Testing
+  - Content Graph Query Testing
+  - React Component Testing
+  - E2E Testing
+  - Visual Regression Testing
+  - Content Migration Testing
+  - Performance Testing
+  - Accessibility Testing
+  - Opal AI Evaluation
+
+author: BMAD Optimizely Specialists
+lastUpdated: 2026-03-31

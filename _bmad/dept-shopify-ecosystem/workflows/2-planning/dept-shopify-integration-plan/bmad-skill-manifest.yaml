@@ -1,0 +1,65 @@
+---
+name: Shopify Integration Implementation Plan
+id: dept-shopify-integration-plan
+type: skill
+version: 1.0.0
+description: >
+  Create phased integration implementation plan with platform
+  sequencing, dependencies, go/no-go checkpoints, and detailed
+  timeline for Shopify ecosystem delivery.
+category: BMAD/ShopifyEcosystem/Planning
+tags:
+  - implementation-planning
+  - sequencing
+  - project-management
+  - governance
+author: BMAD Shopify Ecosystem CoE
+created: 2026-04-02
+updated: 2026-04-02
+
+inputs:
+  - name: architecture_document
+    type: document
+    required: true
+    description: "Architecture design with integration patterns and data flows"
+  - name: platform_selections
+    type: document
+    required: true
+    description: "Confirmed platform selections and vendor details"
+  - name: business_requirements
+    type: document
+    required: false
+    description: "Business priorities and timeline expectations"
+
+outputs:
+  - name: implementation_plan
+    type: document
+    format: markdown
+    description: "Detailed implementation plan with phasing, sequencing, dependencies, and go/no-go criteria"
+
+workflow: workflow.md
+
+success_metrics:
+  - "All platforms sequenced with clear justification"
+  - "Dependencies identified and visualized"
+  - "Go/no-go criteria specific and measurable"
+  - "Timeline realistic and achievable"
+  - "Risk register identifies mitigation strategies"
+
+failure_modes:
+  - name: "Unrealistic timeline expectations"
+    mitigation: "Benchmark against similar implementations; validate with experienced partners"
+  - name: "Missing platform dependencies"
+    mitigation: "Interview vendor implementation teams on prerequisite requirements"
+
+roles:
+  - name: Program Manager
+    description: "Owns implementation sequencing and timeline"
+    permissions:
+      - define-sequencing
+      - set-checkpoints
+  - name: Delivery Lead
+    description: "Responsible for realistic estimation"
+    permissions:
+      - validate-timeline
+      - identify-risks

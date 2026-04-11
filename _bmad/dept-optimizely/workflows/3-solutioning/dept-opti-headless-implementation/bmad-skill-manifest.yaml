@@ -1,0 +1,81 @@
+apiVersion: bmad.optimizely.io/v1alpha1
+kind: Skill
+metadata:
+  name: dept-opti-headless-implementation
+  namespace: dept-optimizely
+  labels:
+    phase: solutioning
+    platform: saas-cms
+    component: headless-frontend
+spec:
+  title: Implement Headless Frontend (SaaS CMS)
+  description: Build Next.js/React frontend consuming Optimizely SaaS CMS via Content Graph with Visual Builder rendering
+  type: skill
+  category:
+    - frontend-development
+    - headless-architecture
+    - content-integration
+  cmsTarget:
+    - saas-cms
+  phase: 3-solutioning
+  complexity: high
+  estimatedDuration: "5-10 days"
+  author: BMAD CMS Optimizely
+  version: "1.0.0"
+  prerequisites:
+    - dept-opti-build-component
+  inputs:
+    - name: components-specification
+      type: document
+      required: true
+      description: Component schemas from dept-opti-build-component
+    - name: content-graph-credentials
+      type: document
+      required: true
+      description: SingleKey and HMAC credentials for Content Graph
+    - name: design-system
+      type: document
+      required: true
+      description: Design tokens and component library
+    - name: visual-builder-config
+      type: document
+      required: false
+      description: Visual Builder element/section mappings
+  outputs:
+    - name: frontend-repository
+      type: repository
+      description: Next.js project with Optimizely integration
+    - name: deployment-guide
+      type: document
+      description: Deployment instructions and environment setup
+    - name: performance-report
+      type: document
+      description: TTI, LCP, CLS metrics and optimization notes
+  successCriteria:
+    - Frontend builds without errors
+    - Content Graph queries authenticate successfully
+    - Visual Builder content renders correctly
+    - Preview mode works for editors
+    - Test coverage >= 80%
+    - TTI < 1 second (typical page)
+    - Code review sign-off obtained
+  steps:
+    - name: step-01-init
+      displayName: Initialize Headless Project
+      description: Set up Next.js, Content Graph client, and project structure
+    - name: step-02-content-graph-integration
+      displayName: Content Graph Query Layer
+      description: Implement authenticated queries, caching, and error handling
+    - name: step-03-visual-builder-rendering
+      displayName: Visual Builder Rendering
+      description: Implement component rendering system for Visual Builder experiences
+  relatedWorkflows:
+    - dept-opti-build-component
+    - dept-opti-code-review
+    - dept-opti-migration-execute
+  tags:
+    - headless-cms
+    - next-js
+    - react
+    - content-graph
+    - visual-builder

@@ -1,0 +1,65 @@
+apiVersion: bmad.optimizely.io/v1alpha1
+kind: Skill
+metadata:
+  name: dept-opti-code-review
+  namespace: dept-optimizely
+  labels:
+    phase: implementation
+    platform: optimizely
+    component: quality-assurance
+spec:
+  title: Code Review and Quality Gate
+  description: Review Optimizely code for quality, security, performance, and accessibility compliance
+  type: skill
+  category:
+    - code-review
+    - quality-assurance
+    - security
+  cmsTarget:
+    - cms12
+    - saas-cms
+  phase: 4-implementation
+  complexity: medium
+  estimatedDuration: "1-2 days"
+  author: BMAD CMS Optimizely
+  version: "1.0.0"
+  prerequisites:
+    - dept-opti-build-component
+  inputs:
+    - name: implementation-code
+      type: repository
+      required: true
+      description: Complete implementation code for review
+    - name: coding-standards
+      type: document
+      required: true
+      description: Team coding standards and guidelines
+  outputs:
+    - name: code-review-report
+      type: document
+      description: Findings, severity levels, recommendations
+    - name: approval-sign-off
+      type: document
+      description: Code review approval signature
+  successCriteria:
+    - Zero critical findings
+    - All major findings remediated
+    - Security review passed
+    - Performance baseline verified
+    - Accessibility compliant
+  steps:
+    - name: step-01-init
+      displayName: Review Scope Setup
+      description: Identify code scope and load standards
+    - name: step-02-review
+      displayName: Code Review Execution
+      description: Review code, document findings, obtain approval
+  relatedWorkflows:
+    - dept-opti-build-component
+    - dept-opti-headless-implementation
+    - dept-opti-migration-execute
+  tags:
+    - code-quality
+    - security-review
+    - performance-analysis
+    - accessibility-testing

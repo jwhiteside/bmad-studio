@@ -1,0 +1,14 @@
+skills:
+  - canonicalId: dept-shopify-data-flows
+    type: skill
+    description: Data flow patterns for products, customers, orders, events, reviews, and personalization across the Shopify ecosystem with timing considerations
+    tags:
+      - data
+      - flows
+      - synchronization
+      - events
+      - webhooks
+      - integration
+    version: "1.0"
+    author: "BMAD Shopify Ecosystem CoE"
+    lastUpdated: "2026-04-02"
