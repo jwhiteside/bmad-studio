@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { X, GitBranch, Users, FileOutput, FileInput, FileText, FolderOpen, Layers, ChevronDown, ChevronRight, Pencil } from 'lucide-react'
+import { X, GitBranch, Users, FileOutput, FileInput, FileText, FolderOpen, Layers, ChevronDown, ChevronRight, Pencil, ArrowRight, BookMarked } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import type { WorkflowStep } from '@bmad-studio/shared'
@@ -140,6 +140,34 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
     return stepGroups.find((g) => g.key === activeVariantTab) ?? stepGroups[0]
   }, [stepGroups, activeVariantTab])
 
+  // Anatomy: unique agents in order of first appearance
+  const agentSequence = useMemo(() => {
+    if (!workflow) return []
+    const seen = new Set<string>()
+    const agents: string[] = []
+    for (const step of workflow.steps) {
+      if (step.agent && !seen.has(step.agent)) {
+        seen.add(step.agent)
+        agents.push(step.agent)
+      }
+    }
+    return agents
+  }, [workflow])
+
+  // Anatomy: aggregated unique inputs/outputs
+  const { allInputs, allOutputs } = useMemo(() => {
+    if (!workflow) return { allInputs: [], allOutputs: [] }
+    const inputs = new Set<string>()
+    const outputs = new Set<string>()
+    for (const step of workflow.steps) {
+      step.inputs?.forEach((i) => inputs.add(i))
+      step.outputs?.forEach((o) => outputs.add(o))
+    }
+    return { allInputs: Array.from(inputs), allOutputs: Array.from(outputs) }
+  }, [workflow])
+
+  const isReference = workflow?.module === 'bmm' || workflow?.module === 'bmb'
+
   const handleStepClick = useCallback(
     async (globalIndex: number) => {
       if (expandedStep === globalIndex) {
@@ -244,9 +272,11 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
 
       {workflow && (
         <div className="p-6 space-y-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 65px)' }}>
-          <div>
-            <p className="text-sm text-[var(--color-muted)]">{workflow.description}</p>
-          </div>
+          {workflow.description && (
+            <div>
+              <p className="text-sm text-[var(--color-muted)]">{workflow.description}</p>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 flex-wrap">
             {workflow.module && (
@@ -259,6 +289,106 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
                 {workflow.phase}
               </span>
             )}
+          </div>
+
+          {/* Reference implementation callout (bmm/bmb) */}
+          {isReference && (
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <BookMarked size={14} className="text-amber-400 shrink-0" />
+                <span className="text-xs font-bold text-amber-400">BMAD Reference Implementation</span>
+              </div>
+              <p className="text-xs text-[var(--color-muted)]">
+                This workflow is part of the canonical BMAD methodology ({workflow.module?.toUpperCase()}). It&rsquo;s a production-quality reference — read it to understand how BMAD structures complex workflows before building your own.
+              </p>
+            </div>
+          )}
+
+          {/* Anatomy: agent sequence (agent-based) */}
+          {agentSequence.length > 1 && (
+            <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-3">Agent Sequence</h3>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {agentSequence.map((agent, i) => (
+                  <div key={agent} className="flex items-center gap-1.5">
+                    {i > 0 && <ArrowRight size={11} className="text-[var(--color-muted)] shrink-0" />}
+                    <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-[var(--color-accent)]">
+                      <Users size={10} />
+                      {agent}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Anatomy: I/O summary */}
+          {(allInputs.length > 0 || allOutputs.length > 0) && (
+            <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-3">Inputs / Outputs</h3>
+              <div className="space-y-2">
+                {allInputs.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <FileInput size={13} className="text-[var(--color-muted)] mt-0.5 shrink-0" />
+                    <div className="flex flex-wrap gap-1">
+                      {allInputs.map((item) => (
+                        <span key={item} className="text-[11px] px-1.5 py-0.5 rounded bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-[var(--color-muted)]">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {allOutputs.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <FileOutput size={13} className="text-[var(--color-success)] mt-0.5 shrink-0" />
+                    <div className="flex flex-wrap gap-1">
+                      {allOutputs.map((item) => (
+                        <span key={item} className="text-[11px] px-1.5 py-0.5 rounded bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-[var(--color-success)]">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Workflow type explanation */}
+          {workflow.type && (
+            <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)]">Workflow Type</span>
+                <WorkflowTypeBadge type={workflow.type} />
+              </div>
+              <p className="text-xs text-[var(--color-muted)]">
+                {workflow.type === 'step-based' && 'A step-based workflow gives a single agent a structured sequence of steps to follow. Best for linear, single-agent tasks like creating a document or running an analysis.'}
+                {workflow.type === 'agent-based' && 'An agent-based workflow orchestrates multiple specialised agents in sequence. Each step is handled by a different agent. Best for multi-phase work like sprint planning or architecture design.'}
+                {workflow.type === 'composite' && 'A composite workflow combines step-based and agent-based sections — some phases are handled by a single agent following steps, others hand off to specialised agents.'}
+              </p>
+            </div>
+          )}
+
+          {/* How to invoke */}
+          <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2">How to Invoke</h3>
+            <div className="space-y-2">
+              {workflow.entryPoint ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <code className="text-sm font-[var(--font-mono)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-2 py-1 rounded text-[var(--color-accent)]">
+                    /{workflow.entryPoint}
+                  </code>
+                  <span className="text-xs text-[var(--color-muted)]">in Claude Code or your configured IDE</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <code className="text-sm font-[var(--font-mono)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-2 py-1 rounded text-[var(--color-accent)]">
+                    /{workflow.id}
+                  </code>
+                  <span className="text-xs text-[var(--color-muted)]">in Claude Code or your configured IDE</span>
+                </div>
+              )}
+              <p className="text-xs text-[var(--color-muted)]">
+                Run this command in your IDE to start the workflow. The agent will guide you through each step.
+              </p>
+            </div>
           </div>
 
           {/* Steps with variant tabs */}

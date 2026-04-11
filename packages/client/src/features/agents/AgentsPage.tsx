@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import { useAgents } from './use-agents.js'
 import { AgentCard } from './AgentCard.js'
@@ -77,7 +78,15 @@ export function AgentsPage() {
         <EmptyState
           icon={Users}
           title="No agents found"
-          description="This project doesn't have any agents yet. Load a module or create a custom agent to get started."
+          description="Agents are AI personas with defined roles, skills, and communication styles. Each agent specialises in a domain — like a developer, analyst, or project manager — and is invoked by name in your IDE. Install a module to get a curated set of agents, or create a custom one."
+          actions={
+            <Link
+              to="/modules"
+              className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+            >
+              Browse Modules
+            </Link>
+          }
         />
       </div>
     )

@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, ChevronDown, ChevronRight, Pencil, Plus, GitBranch, Users } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, Pencil, Plus, GitBranch, Users, GitMerge, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 
 import type { TeamListItem } from '@bmad-studio/shared'
@@ -112,20 +112,6 @@ export function AgentDetailPage() {
             <Pencil size={14} />
             Edit Agent
           </button>
-          <button
-            onClick={() => navigate(`/agents/${id}/override`)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors"
-          >
-            <Pencil size={14} />
-            Edit Override
-          </button>
-          <a
-            href={`vscode://file${agent.filePath}`}
-            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors underline underline-offset-2"
-          >
-            <ExternalLink size={14} />
-            Open in IDE
-          </a>
         </div>
       </div>
 
@@ -168,6 +154,42 @@ export function AgentDetailPage() {
             <span className="text-[var(--color-muted)]">Discussion Mode</span>
             <p className="font-bold">{agent.discussion ? 'Enabled' : 'Disabled'}</p>
           </div>
+        </div>
+      </section>
+
+      {/* How to invoke */}
+      <section className="mb-8">
+        <h2 className="text-lg font-bold mb-3">How to Invoke</h2>
+        <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-5 space-y-4">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2">In Claude Code</h3>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <code className="text-sm font-[var(--font-mono)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-2 py-1 rounded text-[var(--color-accent)]">
+                  /{agent.name}
+                </code>
+                <span className="text-xs text-[var(--color-muted)]">activate this agent</span>
+              </div>
+            </div>
+          </div>
+          {agent.menu.length > 0 && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2">Available Commands</h3>
+              <div className="space-y-1">
+                {agent.menu.slice(0, 6).map((item) => (
+                  <div key={item.trigger} className="flex items-center gap-2">
+                    <code className="text-xs font-[var(--font-mono)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-2 py-0.5 rounded text-[var(--color-accent)]">
+                      {item.trigger}
+                    </code>
+                    <span className="text-xs text-[var(--color-muted)] truncate">{item.input}</span>
+                  </div>
+                ))}
+                {agent.menu.length > 6 && (
+                  <p className="text-xs text-[var(--color-muted)] mt-1">+{agent.menu.length - 6} more — scroll down to Commands</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -325,6 +347,51 @@ export function AgentDetailPage() {
           })()}
         </section>
       )}
+
+      {/* Override */}
+      <section className="mb-8">
+        <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+          <GitMerge size={18} className="text-[var(--color-muted)]" />
+          Override
+        </h2>
+        <div className="rounded-lg border border-[var(--color-border-subtle)] p-5">
+          {agent.customizations && Object.keys(agent.customizations).length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle size={14} className="text-[var(--color-warning)] mt-0.5 shrink-0" />
+                <p className="text-sm text-[var(--color-text)]">
+                  This agent has project-level customizations that extend the module's default behaviour.
+                  Overrides let you adjust an agent's persona, instructions, or skills without modifying
+                  the original module file — changes here survive module updates.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate(`/agents/${id}/override`)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] hover:border-[var(--color-accent)] transition-colors"
+              >
+                <Pencil size={13} />
+                Edit Override
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-[var(--color-muted)]">
+                No overrides yet. An <strong className="text-[var(--color-text)]">override</strong> lets
+                you customise this agent's behaviour for your project — adjusting its persona, adding
+                project-specific instructions, or changing its skills — without touching the original
+                module file. Your changes persist across module updates.
+              </p>
+              <button
+                onClick={() => navigate(`/agents/${id}/override`)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] hover:border-[var(--color-accent)] transition-colors"
+              >
+                <Pencil size={13} />
+                Create Override
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Source (collapsed by default) */}
       <section>

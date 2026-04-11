@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { GitBranch, List, LayoutGrid, Plus } from 'lucide-react'
+import { GitBranch, List, LayoutGrid, Plus, HelpCircle, X, Users, Layers, BookMarked } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import type { WorkflowListItem, WorkflowType } from '@bmad-studio/shared'
 
@@ -17,12 +18,19 @@ const TYPE_BADGE_STYLES: Record<string, string> = {
   composite: 'border-blue-400/50 text-blue-400',
 }
 
+const TYPE_TOOLTIPS: Record<string, string> = {
+  'step-based': 'Step Workflow: gives a single agent a structured sequence of steps to follow. Best for linear, single-agent tasks.',
+  'agent-based': 'Agent Workflow: orchestrates multiple specialised agents in sequence. Best for multi-phase work like sprint planning or architecture design.',
+  composite: 'Composite Workflow: combines step-based and agent-based sections. Best for complex processes that need both structured steps and agent hand-offs.',
+}
+
 export function WorkflowTypeBadge({ type }: { type?: WorkflowType }) {
   if (!type) return null
   const label = type === 'step-based' ? 'Step' : type === 'agent-based' ? 'Agent' : 'Composite'
   return (
     <span
-      className={`px-2 py-0.5 rounded-full text-xs border ${TYPE_BADGE_STYLES[type] ?? TYPE_BADGE_STYLES['step-based']}`}
+      title={TYPE_TOOLTIPS[type]}
+      className={`px-2 py-0.5 rounded-full text-xs border cursor-help ${TYPE_BADGE_STYLES[type] ?? TYPE_BADGE_STYLES['step-based']}`}
     >
       {label}
     </span>
@@ -56,10 +64,80 @@ function groupByPhase(workflows: WorkflowListItem[]): PhaseGroup[] {
   })
 }
 
+function TypeGuide({ onClose }: { onClose: () => void }) {
+  const types = [
+    {
+      label: 'Step Workflow',
+      badge: <WorkflowTypeBadge type="step-based" />,
+      icon: <GitBranch size={20} className="text-[var(--color-muted)]" />,
+      description: 'One agent, structured sequence. The workflow gives a single agent a numbered list of steps to follow — like a recipe.',
+      bestFor: ['Creating a single document', 'Running a focused analysis', 'Guided single-session tasks'],
+      example: '/create-prd',
+    },
+    {
+      label: 'Agent Workflow',
+      badge: <WorkflowTypeBadge type="agent-based" />,
+      icon: <Users size={20} className="text-purple-400" />,
+      description: 'Multiple specialists in sequence. Each phase is handed to a different agent. Like a relay race — the baton passes between experts.',
+      bestFor: ['Sprint planning', 'Architecture design', 'Multi-phase deliverables needing different expertise'],
+      example: '/run-sprint',
+    },
+    {
+      label: 'Composite Workflow',
+      badge: <WorkflowTypeBadge type="composite" />,
+      icon: <Layers size={20} className="text-blue-400" />,
+      description: 'The most flexible type. Some phases are structured step sequences; others hand off to specialist agents. Combines both patterns.',
+      bestFor: ['Complex processes needing both structured steps and agent handoffs', 'Workflows with parallel tracks'],
+      example: '/bmad-full-pipeline',
+    },
+  ]
+
+  return (
+    <div className="mb-6 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-subtle)]">
+        <h3 className="text-sm font-bold">Understanding Workflow Types</h3>
+        <button onClick={onClose} className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors">
+          <X size={16} />
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[var(--color-border-subtle)]">
+        {types.map((t) => (
+          <div key={t.label} className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              {t.icon}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold">{t.label}</span>
+                {t.badge}
+              </div>
+            </div>
+            <p className="text-xs text-[var(--color-muted)] leading-relaxed">{t.description}</p>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)] mb-1">Best for</p>
+              <ul className="space-y-0.5">
+                {t.bestFor.map((bf) => (
+                  <li key={bf} className="text-xs text-[var(--color-muted)] flex items-start gap-1.5">
+                    <span className="text-[var(--color-accent)] mt-0.5 shrink-0">›</span>
+                    {bf}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)] mb-1">Example invocation</p>
+              <code className="text-xs font-[var(--font-mono)] text-[var(--color-accent)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-1.5 py-0.5 rounded">{t.example}</code>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function WorkflowsPage() {
   const { data: workflows, isLoading, refetch } = useWorkflows()
   const [view, setView] = useState<'list' | 'graph'>('list')
   const [showCreate, setShowCreate] = useState(false)
+  const [showTypeGuide, setShowTypeGuide] = useState(false)
   const [selectedId, setSelectedId] = useDetailParam('detail')
   const [activeModule, setActiveModule] = useState<string>('all')
   const [search, setSearch] = useState('')
@@ -126,7 +204,23 @@ export function WorkflowsPage() {
         <EmptyState
           icon={GitBranch}
           title="No workflows found"
-          description="Install a module or create a workflow to get started."
+          description="Workflows are structured processes you run in your IDE — like sprint planning, architecture design, or code review. A Step Workflow guides a single agent through phases. An Agent Workflow hands off between multiple specialised agents. Install a module to get pre-built workflows, or create your own."
+          actions={
+            <>
+              <Link
+                to="/modules"
+                className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+              >
+                Browse Modules
+              </Link>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors"
+              >
+                New Workflow
+              </button>
+            </>
+          }
         />
       </div>
     )
@@ -146,6 +240,13 @@ export function WorkflowsPage() {
           onSearchChange={setSearch}
           actions={
             <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowTypeGuide((v) => !v)}
+              title="About workflow types"
+              className={`p-2 rounded-md transition-colors ${showTypeGuide ? 'text-[var(--color-accent)] bg-[var(--color-surface-raised)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-raised)]'}`}
+            >
+              <HelpCircle size={16} />
+            </button>
             <button
               onClick={() => setShowCreate(true)}
               className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
@@ -181,6 +282,8 @@ export function WorkflowsPage() {
           }
         />
 
+        {showTypeGuide && <TypeGuide onClose={() => setShowTypeGuide(false)} />}
+
         {view === 'list' && (
           <div className="space-y-6">
             {phaseGroups.map(([phase, wfs]) => (
@@ -210,6 +313,12 @@ export function WorkflowsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-[var(--color-muted)]">
+                        {(wf.module === 'bmm' || wf.module === 'bmb') && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold shrink-0">
+                            <BookMarked size={9} />
+                            Reference
+                          </span>
+                        )}
                         <WorkflowTypeBadge type={wf.type} />
                         <span>{wf.stepCount} steps</span>
                         {wf.module && (

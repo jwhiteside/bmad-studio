@@ -1,9 +1,186 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GitBranch, Zap, Plug, Package, Rocket, Users, ArrowRight } from 'lucide-react'
+import { GitBranch, Zap, Plug, Package, Rocket, Users, ArrowRight, CheckCircle2, Circle, Clock, FileText, Brain, Wrench } from 'lucide-react'
 
 import { EmptyState } from '../../shared/EmptyState.js'
 import { WorkflowTypeBadge } from '../workflows/WorkflowsPage.js'
+
+type OutputCategory = 'brainstorming' | 'planning' | 'implementation' | 'other'
+
+type ProjectHealth = {
+  sprint: {
+    lastUpdated: string | null
+    activeEpics: string[]
+    storyCounts: { inProgress: number; review: number; done: number; backlog: number; readyForDev: number; total: number }
+    inProgressStories: string[]
+    reviewStories: string[]
+  } | null
+  recentOutputs: Array<{ category: OutputCategory; name: string; path: string; modifiedAt: string }>
+  outputCounts: { brainstorming: number; planning: number; implementation: number; other: number; total: number }
+}
+
+const CATEGORY_META: Record<OutputCategory, { label: string; icon: typeof Brain }> = {
+  brainstorming: { label: 'Brainstorming', icon: Brain },
+  planning: { label: 'Planning', icon: FileText },
+  implementation: { label: 'Implementation', icon: Wrench },
+  other: { label: 'Other', icon: FileText },
+}
+
+function humaniseStoryId(id: string): string {
+  // "16-3-registry-browse-ui-and-installed-status" → "16.3 Registry Browse UI"
+  const parts = id.split('-')
+  const epicNum = parts[0]
+  const storyNum = parts[1]
+  const title = parts.slice(2).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+  return title ? `${epicNum}.${storyNum} ${title}` : id
+}
+
+function humaniseEpicId(id: string): string {
+  // "epic-16" → "Epic 16"
+  return id.replace('epic-', 'Epic ')
+}
+
+function ProjectStatusPanel({ health }: { health: ProjectHealth }) {
+  const { sprint, recentOutputs, outputCounts } = health
+
+  return (
+    <section className="mb-10 border-b border-[var(--color-border-subtle)] pb-10">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)]">Project Status</h2>
+        <Link to="/outputs" className="text-sm font-bold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors">
+          View all outputs &rarr;
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Sprint Status */}
+        <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-3">Sprint Status</h3>
+          {sprint ? (
+            <div className="space-y-3">
+              {sprint.activeEpics.length > 0 ? (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {sprint.activeEpics.map((e) => (
+                      <span key={e} className="px-2 py-0.5 text-xs font-bold rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
+                        {humaniseEpicId(e)}
+                      </span>
+                    ))}
+                    <span className="text-xs text-[var(--color-muted)]">active</span>
+                  </div>
+
+                  {/* Progress bar */}
+                  {sprint.storyCounts.total > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-[var(--color-muted)] mb-1.5">
+                        <span>{sprint.storyCounts.done} / {sprint.storyCounts.total} stories done</span>
+                        <span>{Math.round((sprint.storyCounts.done / sprint.storyCounts.total) * 100)}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-[var(--color-bg)] overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-[var(--color-accent)] transition-all"
+                          style={{ width: `${(sprint.storyCounts.done / sprint.storyCounts.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {sprint.inProgressStories.length > 0 && (
+                    <div className="space-y-1">
+                      {sprint.inProgressStories.map((s) => (
+                        <div key={s} className="flex items-center gap-2 text-xs">
+                          <Clock size={12} className="text-[var(--color-warning)] shrink-0" />
+                          <span className="text-[var(--color-text)] truncate">{humaniseStoryId(s)}</span>
+                          <span className="text-[var(--color-warning)] shrink-0">In Progress</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {sprint.reviewStories.length > 0 && (
+                    <div className="space-y-1">
+                      {sprint.reviewStories.map((s) => (
+                        <div key={s} className="flex items-center gap-2 text-xs">
+                          <Circle size={12} className="text-[var(--color-accent)] shrink-0" />
+                          <span className="text-[var(--color-text)] truncate">{humaniseStoryId(s)}</span>
+                          <span className="text-[var(--color-accent)] shrink-0">In Review</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {sprint.storyCounts.inProgress === 0 && sprint.storyCounts.review === 0 && sprint.storyCounts.backlog === 0 && (
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--color-success)]">
+                      <CheckCircle2 size={14} />
+                      <span>All stories complete</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-[var(--color-muted)]">No active epics — all epics complete or backlog.</p>
+              )}
+              {sprint.lastUpdated && (
+                <p className="text-xs text-[var(--color-muted)]">Updated {sprint.lastUpdated}</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--color-muted)]">No sprint-status.yaml found in _bmad-output.</p>
+          )}
+        </div>
+
+        {/* Output Hub summary + recent */}
+        <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-3">Output Hub</h3>
+          {outputCounts.total > 0 ? (
+            <div className="space-y-3">
+              <div className="flex gap-3 flex-wrap">
+                {(['brainstorming', 'planning', 'implementation'] as OutputCategory[])
+                  .filter((c) => outputCounts[c] > 0)
+                  .map((cat) => {
+                    const { label, icon: Icon } = CATEGORY_META[cat]
+                    return (
+                      <Link
+                        key={cat}
+                        to={`/outputs?category=${cat}`}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] transition-colors text-xs"
+                      >
+                        <Icon size={12} className="text-[var(--color-accent)] shrink-0" />
+                        <span className="font-bold">{label}</span>
+                        <span className="text-[var(--color-muted)]">{outputCounts[cat]}</span>
+                      </Link>
+                    )
+                  })}
+              </div>
+              {recentOutputs.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-[var(--color-muted)] mb-2">Recent</p>
+                  <div className="space-y-1.5">
+                    {recentOutputs.slice(0, 4).map((f) => {
+                      const { icon: Icon } = CATEGORY_META[f.category]
+                      const friendlyDate = new Date(f.modifiedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                      return (
+                        <Link
+                          key={f.path}
+                          to={`/outputs?path=${encodeURIComponent(f.path)}`}
+                          className="flex items-center gap-2 text-xs hover:text-[var(--color-accent)] transition-colors group"
+                        >
+                          <Icon size={11} className="text-[var(--color-muted)] shrink-0 group-hover:text-[var(--color-accent)]" />
+                          <span className="truncate text-[var(--color-text)] group-hover:text-[var(--color-accent)]">{f.name.replace(/\.(md|yaml|yml)$/, '')}</span>
+                          <span className="text-[var(--color-muted)] shrink-0 ml-auto">{friendlyDate}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--color-muted)]">No outputs yet. Run BMAD workflows to generate artifacts.</p>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
 
 type CommandItem = {
   module: string
@@ -191,16 +368,19 @@ export function OverviewPage() {
   const navigate = useNavigate()
   const [data, setData] = useState<OverviewData | null>(null)
   const [commands, setCommands] = useState<CommandItem[]>([])
+  const [health, setHealth] = useState<ProjectHealth | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       fetch('/api/overview').then((r) => r.json()),
       fetch('/api/commands').then((r) => r.json()).catch(() => []),
+      fetch('/api/project-health').then((r) => r.json()).catch(() => null),
     ])
-      .then(([overview, cmds]) => {
+      .then(([overview, cmds, healthData]) => {
         setData(overview as OverviewData)
         setCommands(cmds as CommandItem[])
+        if (healthData) setHealth(healthData as ProjectHealth)
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -230,9 +410,12 @@ export function OverviewPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-extrabold mb-10">Overview</h1>
+      <h1 className="text-3xl font-extrabold mb-10">Home</h1>
 
       <div className="space-y-0">
+        {/* Project Status — shown when health data exists */}
+        {health && <ProjectStatusPanel health={health} />}
+
         {/* Agents — first section, renamed from "The Team" */}
         {sections.team && sections.team.count > 0 && (
           <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">

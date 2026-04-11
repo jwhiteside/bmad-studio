@@ -8,7 +8,6 @@ import {
   GitBranch,
   FileOutput,
   Plug,
-  Briefcase,
   Package,
   FolderTree,
   BookOpen,
@@ -29,13 +28,13 @@ const navItems: Array<{
   icon: typeof Users
   badgeKey?: string
 }> = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard },
+  { to: '/', label: 'Home', icon: LayoutDashboard },
+  { to: '/outputs', label: 'Outputs', icon: FileOutput },
   { to: '/agents', label: 'Agents', icon: Users, badgeKey: 'agents' },
   { to: '/teams', label: 'Teams', icon: UsersRound, badgeKey: 'teams' },
   { to: '/skills', label: 'Skills', icon: Zap, badgeKey: 'skills' },
   { to: '/workflows', label: 'Workflows', icon: GitBranch, badgeKey: 'workflows' },
   { to: '/connections', label: 'Data Sources', icon: Plug, badgeKey: 'connections' },
-  { to: '/workspace', label: 'Workspace', icon: Briefcase },
   { to: '/modules', label: 'Modules', icon: Package, badgeKey: 'modules' },
 ]
 
@@ -45,10 +44,9 @@ const utilityItems: Array<{
   icon: typeof Users
   badgeKey?: string
 }> = [
-  { to: '/outputs', label: 'Outputs', icon: FileOutput },
   { to: '/commands', label: 'Commands', icon: BookOpen },
-  { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/files', label: 'Files', icon: FolderTree },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 function NavItem({

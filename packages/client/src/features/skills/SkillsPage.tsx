@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Zap, Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import { useSkills } from './use-skills.js'
 import { SkillDetailSlideOver } from './SkillDetailSlideOver.js'
@@ -67,7 +68,23 @@ export function SkillsPage() {
         <EmptyState
           icon={Zap}
           title="No skills found"
-          description="Install a module or import skills to get started."
+          description="Skills are reusable instruction sets — slash commands you invoke in your IDE like /create-prd or /sprint-planning. They can be attached to agents or called directly. Install a module to get a set of ready-made skills, or create your own."
+          actions={
+            <>
+              <Link
+                to="/modules"
+                className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+              >
+                Browse Modules
+              </Link>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors"
+              >
+                Create Skill
+              </button>
+            </>
+          }
         />
       </div>
     )

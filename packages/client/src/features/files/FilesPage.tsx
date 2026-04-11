@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { FolderTree, File, Folder } from 'lucide-react'
+import { FolderTree, File, Folder, Save, Loader2 } from 'lucide-react'
 
 import type { FileNode } from '@bmad-studio/shared'
 
@@ -8,6 +8,16 @@ import { CsvViewer } from '../../shared/CsvViewer.js'
 import { SlideOver } from '../../shared/SlideOver.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
 import { useDetailParam } from '../../hooks/use-detail-param.js'
+import { useNotifications } from '../../layout/NotificationProvider.js'
+
+function getRelativePath(filePath: string): string {
+  const bmadIndex = filePath.lastIndexOf('/_bmad/')
+  return bmadIndex >= 0 ? filePath.slice(bmadIndex + 7) : filePath
+}
+
+function isEditable(filePath: string): boolean {
+  return /\.(md|yaml|yml)$/i.test(filePath)
+}
 
 function TreeNode({
   node,
@@ -30,7 +40,11 @@ function TreeNode({
     }
   }
 
-  const isSelected = node.type === 'file' && selectedPath === node.path
+  // Highlight if either the full path or relative path matches
+  const relPath = getRelativePath(node.path)
+  const isSelected =
+    node.type === 'file' &&
+    (selectedPath === node.path || selectedPath === relPath)
 
   return (
     <div>
@@ -74,7 +88,12 @@ export function FilesPage() {
   const [loading, setLoading] = useState(true)
   const [selectedFile, setSelectedFile] = useDetailParam('path')
   const [fileContent, setFileContent] = useState('')
+  const [savedContent, setSavedContent] = useState('')
   const [contentLoading, setContentLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const { notify } = useNotifications()
+
+  const isDirty = fileContent !== savedContent
 
   useEffect(() => {
     fetch('/api/files')
@@ -86,36 +105,71 @@ export function FilesPage() {
       .catch(() => setLoading(false))
   }, [])
 
-  const handleSelectFile = useCallback(
-    async (fullPath: string) => {
-      if (selectedFile === fullPath) {
-        setSelectedFile(null)
-        return
-      }
-      setSelectedFile(fullPath)
-      setContentLoading(true)
+  // Load content whenever selectedFile changes (handles both tree clicks and URL deep links)
+  useEffect(() => {
+    if (!selectedFile) {
+      setFileContent('')
+      setSavedContent('')
+      return
+    }
 
-      // Extract relative path from full path (strip everything up to and including _bmad/)
-      // Use lastIndexOf so project roots that contain "_bmad/" in their own name don't cause mismatch.
-      const bmadIndex = fullPath.lastIndexOf('/_bmad/')
-      const relativePath = bmadIndex >= 0 ? fullPath.slice(bmadIndex + 7) : fullPath
+    setContentLoading(true)
+    const relativePath = getRelativePath(selectedFile)
 
-      try {
-        const resp = await fetch(`/api/files/${relativePath}`)
-        if (resp.ok) {
-          const data = (await resp.json()) as { content: string; path: string }
-          setFileContent(data.content)
-        } else {
-          setFileContent('Failed to load file.')
-        }
-      } catch {
+    fetch(`/api/files/${relativePath}`)
+      .then((r) => {
+        if (!r.ok) throw new Error('Not found')
+        return r.json()
+      })
+      .then((data: { content: string; path: string }) => {
+        setFileContent(data.content)
+        setSavedContent(data.content)
+      })
+      .catch(() => {
         setFileContent('Failed to load file content.')
-      } finally {
-        setContentLoading(false)
+        setSavedContent('Failed to load file content.')
+      })
+      .finally(() => setContentLoading(false))
+  }, [selectedFile])
+
+  const handleSelectFile = useCallback(
+    (fullPath: string) => {
+      // Toggle off if same file, else navigate to new file
+      const relPath = getRelativePath(fullPath)
+      if (selectedFile === fullPath || selectedFile === relPath) {
+        setSelectedFile(null)
+      } else {
+        setSelectedFile(fullPath)
       }
     },
-    [selectedFile],
+    [selectedFile, setSelectedFile],
   )
+
+  const handleSave = useCallback(async () => {
+    if (!selectedFile || saving) return
+    setSaving(true)
+    const relativePath = getRelativePath(selectedFile)
+    try {
+      const resp = await fetch(`/api/files/${relativePath}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: fileContent }),
+      })
+      if (!resp.ok) {
+        const data = (await resp.json()) as { error?: string }
+        throw new Error(data.error ?? 'Save failed')
+      }
+      setSavedContent(fileContent)
+      notify('success', `Saved ${relativePath.split('/').pop()}`)
+    } catch (err) {
+      notify('error', `Failed to save: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setSaving(false)
+    }
+  }, [selectedFile, fileContent, saving, notify])
+
+  const fileName = selectedFile ? selectedFile.split('/').pop() ?? selectedFile : ''
+  const editable = selectedFile ? isEditable(selectedFile) : false
 
   if (loading)
     return (
@@ -155,20 +209,39 @@ export function FilesPage() {
 
       <SlideOver
         open={!!selectedFile}
-        title={selectedFile ?? ''}
+        title={fileName}
         onClose={() => setSelectedFile(null)}
+        width="max(480px, 50vw)"
+        actions={
+          editable ? (
+            <button
+              onClick={handleSave}
+              disabled={!isDirty || saving}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${
+                isDirty && !saving
+                  ? 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]'
+                  : 'bg-[var(--color-surface-raised)] text-[var(--color-muted)] cursor-not-allowed'
+              }`}
+              title={isDirty ? 'Save (⌘S)' : 'No unsaved changes'}
+            >
+              {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+              {saving ? 'Saving…' : isDirty ? 'Save' : 'Saved'}
+            </button>
+          ) : undefined
+        }
       >
         {contentLoading ? (
           <div className="h-64 rounded bg-[var(--color-surface-raised)] animate-pulse" />
         ) : selectedFile?.endsWith('.csv') ? (
           <CsvViewer content={fileContent} />
         ) : (
-          <div className="h-96 rounded-lg overflow-hidden border border-[var(--color-border-subtle)]">
+          <div className="rounded-lg overflow-hidden border border-[var(--color-border-subtle)]" style={{ height: 'calc(100vh - 140px)' }}>
             <MarkdownEditor
               content={fileContent}
               filePath={selectedFile ?? ''}
-              onChange={() => {}}
-              readOnly
+              onChange={setFileContent}
+              onSave={handleSave}
+              readOnly={!editable}
             />
           </div>
         )}

@@ -128,6 +128,16 @@ export function SkillDetailSlideOver({ skillId, onClose }: SkillDetailSlideOverP
             <p className="text-sm text-[var(--color-muted)]">{skill.description}</p>
           </div>
 
+          <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2">How to Invoke</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <code className="text-sm font-[var(--font-mono)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-2 py-1 rounded text-[var(--color-accent)]">
+                /{skill.id}
+              </code>
+              <span className="text-xs text-[var(--color-muted)]">in Claude Code or your configured IDE</span>
+            </div>
+          </div>
+
           {skill.bestFor && skill.bestFor.length > 0 && (
             <div>
               <h3 className="text-sm font-bold mb-2">Best for</h3>
