@@ -74,6 +74,7 @@ function AddDataSourceDialog({
   const [name, setName] = useState('')
   const [cliTool, setCliTool] = useState('')
   const [parameters, setParameters] = useState<Record<string, string>>({})
+  const [newParamKey, setNewParamKey] = useState('')
   const [outputPath, setOutputPath] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -208,17 +209,30 @@ function AddDataSourceDialog({
             ))}
 
             {selectedType === 'custom' && (
-              <div>
-                <button
-                  onClick={() => {
-                    const key = prompt('Parameter name:')
-                    if (key && key.trim()) {
-                      setParameters({ ...parameters, [key.trim()]: '' })
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newParamKey}
+                  onChange={(e) => setNewParamKey(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newParamKey.trim()) {
+                      setParameters({ ...parameters, [newParamKey.trim()]: '' })
+                      setNewParamKey('')
                     }
                   }}
-                  className="text-xs text-[var(--color-accent)] hover:underline"
+                  placeholder="Parameter name"
+                  className="flex-1 px-2 py-1 text-xs rounded border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] focus:border-[var(--color-accent)] focus:outline-none"
+                />
+                <button
+                  onClick={() => {
+                    if (newParamKey.trim()) {
+                      setParameters({ ...parameters, [newParamKey.trim()]: '' })
+                      setNewParamKey('')
+                    }
+                  }}
+                  className="text-xs text-[var(--color-accent)] hover:underline shrink-0"
                 >
-                  + Add parameter
+                  + Add
                 </button>
               </div>
             )}

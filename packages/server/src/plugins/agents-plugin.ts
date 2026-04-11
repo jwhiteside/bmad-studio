@@ -148,7 +148,14 @@ export async function agentsPlugin(app: FastifyInstance) {
       const skillsYaml = skills.map((s) => `  - ${s}`).join('\n')
       const skillsPattern = /^(skills:\s*\n)((?:\s+-\s+.+\n)*)/m
       if (skillsPattern.test(source)) {
-        source = source.replace(skillsPattern, `$1${skillsYaml}\n`)
+        source = source.replace(skillsPattern, `$1${skillsYaml ? skillsYaml + '\n' : ''}`)
+      } else {
+        // No skills: block in frontmatter — insert before the closing ---
+        const closingFm = source.indexOf('\n---')
+        if (closingFm !== -1) {
+          const block = skillsYaml ? `\nskills:\n${skillsYaml}` : `\nskills:`
+          source = source.slice(0, closingFm) + block + source.slice(closingFm)
+        }
       }
 
       app.fileStore.markPendingWrite(agent.filePath)

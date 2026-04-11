@@ -76,7 +76,8 @@ export async function workflowsPlugin(app: FastifyInstance) {
       '',
     ].join('\n')
 
-    fs.writeFileSync(path.join(workflowDir, 'workflow.md'), workflowMd, 'utf-8')
+    const wfResult = writeFile(path.join(workflowDir, 'workflow.md'), workflowMd, app.fileStore.studioDir)
+    if (!wfResult.ok) throw new ValidationError(wfResult.error)
 
     // Create steps directory and step files (step-based only)
     if (type === 'step-based' && steps.length > 0) {
@@ -102,7 +103,8 @@ export async function workflowsPlugin(app: FastifyInstance) {
           .filter(Boolean)
           .join('\n')
 
-        fs.writeFileSync(path.join(stepsDir, `step-${num}-${slug}.md`), stepContent, 'utf-8')
+        const stepResult = writeFile(path.join(stepsDir, `step-${num}-${slug}.md`), stepContent, app.fileStore.studioDir)
+        if (!stepResult.ok) throw new ValidationError(stepResult.error)
       })
     }
 
@@ -152,10 +154,13 @@ export async function workflowsPlugin(app: FastifyInstance) {
     let content = fs.readFileSync(workflow.entryPoint, 'utf-8')
 
     if (body.description !== undefined) {
-      // Update description in frontmatter
+      const escaped = body.description.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
       const descPattern = /^(description:\s*)"?.*?"?\s*$/m
       if (descPattern.test(content)) {
-        content = content.replace(descPattern, `$1"${body.description}"`)
+        content = content.replace(descPattern, `$1"${escaped}"`)
+      } else {
+        // description: key absent — insert before the closing frontmatter ---
+        content = content.replace(/(\n---\n)/, `\ndescription: "${escaped}"$1`)
       }
     }
 
@@ -255,8 +260,8 @@ export async function workflowsPlugin(app: FastifyInstance) {
           .sort()
           .map((f) => {
             const fullPath = path.join(dirPath, f)
-            const bmadIndex = fullPath.indexOf('_bmad/')
-            const relativePath = bmadIndex >= 0 ? fullPath.slice(bmadIndex + 6) : f
+            const bmadIndex = fullPath.lastIndexOf('/_bmad/')
+            const relativePath = bmadIndex >= 0 ? fullPath.slice(bmadIndex + 7) : f
             return { name: f, relativePath }
           })
         if (files.length > 0) {

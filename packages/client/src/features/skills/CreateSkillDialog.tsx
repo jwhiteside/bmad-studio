@@ -11,6 +11,10 @@ type CreateSkillDialogProps = {
 
 type ModuleOption = { name: string }
 
+function escapeYamlStr(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
 function generateSkillMarkdown(
   name: string,
   description: string,
@@ -18,11 +22,11 @@ function generateSkillMarkdown(
   content: string,
 ): string {
   const lines = ['---', `name: ${name}`]
-  if (description) lines.push(`description: "${description}"`)
+  if (description) lines.push(`description: "${escapeYamlStr(description)}"`)
   if (bestFor.length > 0) {
     lines.push('best_for:')
     for (const role of bestFor) {
-      lines.push(`  - ${role.trim()}`)
+      lines.push(`  - "${escapeYamlStr(role.trim())}"`)
     }
   }
   lines.push('---', '', content || '# Skill Instructions\n\n<!-- Add skill instructions here -->')
@@ -202,6 +206,16 @@ export function CreateSkillDialog({ onClose, onCreated }: CreateSkillDialogProps
                   <button
                     onClick={async () => {
                       if (!importUrl) return
+                      try {
+                        const parsedUrl = new URL(importUrl)
+                        if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+                          setError('URL must start with http:// or https://')
+                          return
+                        }
+                      } catch {
+                        setError('Invalid URL')
+                        return
+                      }
                       try {
                         const resp = await fetch(importUrl)
                         if (resp.ok) {

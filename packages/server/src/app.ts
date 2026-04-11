@@ -1,3 +1,4 @@
+import multipart from '@fastify/multipart'
 import Fastify from 'fastify'
 
 import type { AppInfo, ProjectStatus } from '@bmad-studio/shared'
@@ -21,6 +22,10 @@ import { teamsPlugin } from './plugins/teams-plugin.js'
 import { commandsPlugin } from './plugins/commands-plugin.js'
 import { datasourcesPlugin } from './plugins/datasources-plugin.js'
 import type { ProjectDetectionResult } from './core/project-detector.js'
+
+// Bump this constant if a real registry module exceeds the limit. Local-tool default —
+// not security-critical. See finding #17 / spec §6.1 for the rationale.
+export const MAX_MODULE_UPLOAD_BYTES = 50 * 1024 * 1024 // 50 MB
 
 type CreateAppOptions = {
   logger?: FastifyServerOptions['logger']
@@ -76,6 +81,12 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   // Register WebSocket support
   await registerWebSocket(app)
+
+  // Register multipart support BEFORE any plugin that uses request.file()
+  // (modulesPlugin's POST /api/modules/install/upload route — Story 15.4).
+  await app.register(multipart, {
+    limits: { fileSize: MAX_MODULE_UPLOAD_BYTES },
+  })
 
   // Register file store if project detected
   if (project) {

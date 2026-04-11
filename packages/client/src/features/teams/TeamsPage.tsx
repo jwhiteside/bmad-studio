@@ -41,6 +41,22 @@ function TeamCard({
       {team.description && (
         <p className="text-xs text-[var(--color-muted)] line-clamp-2 mb-2">{team.description}</p>
       )}
+      {team.agentIds && team.agentIds.length > 0 && (
+        <div className="flex items-center gap-1 mb-2 flex-wrap">
+          {team.agentIds.slice(0, 8).map((id) => (
+            <span
+              key={id}
+              title={id}
+              className="w-6 h-6 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-xs flex items-center justify-center font-bold text-[var(--color-muted)] uppercase shrink-0"
+            >
+              {id.charAt(0)}
+            </span>
+          ))}
+          {team.agentIds.length > 8 && (
+            <span className="text-xs text-[var(--color-muted)]">+{team.agentIds.length - 8} more</span>
+          )}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <span className="text-xs text-[var(--color-muted)]">
           <Users size={10} className="inline mr-1" />

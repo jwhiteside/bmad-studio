@@ -35,8 +35,8 @@ export function AgentDetailPage() {
     setSourceExpanded(willExpand)
     if (willExpand && agent && sourceContent === null) {
       setSourceLoading(true)
-      const bmadIndex = agent.filePath.indexOf('_bmad/')
-      const relativePath = bmadIndex >= 0 ? agent.filePath.slice(bmadIndex + 6) : agent.filePath
+      const bmadIndex = agent.filePath.lastIndexOf('/_bmad/')
+      const relativePath = bmadIndex >= 0 ? agent.filePath.slice(bmadIndex + 7) : agent.filePath
       fetch(`/api/files/${relativePath}`)
         .then((r) => {
           if (!r.ok) throw new Error('Not found')

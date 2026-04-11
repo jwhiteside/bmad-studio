@@ -62,7 +62,7 @@ export async function teamsPlugin(app: FastifyInstance) {
     }
 
     const content = fs.readFileSync(absPath, 'utf-8')
-    return { content, path: absPath }
+    return { content }
   })
 
   // Create team
@@ -99,18 +99,18 @@ export async function teamsPlugin(app: FastifyInstance) {
       fs.mkdirSync(teamsDir, { recursive: true })
     }
 
-    const teamYaml = {
+    const teamYaml: Record<string, unknown> = {
       bundle: {
         name,
         icon: body.icon ?? '',
         description: body.description ?? '',
       },
       agents: body.agentIds ?? [],
-      party: './default-party.csv',
     }
 
     const content = yaml.dump(teamYaml, { lineWidth: -1 })
-    fs.writeFileSync(teamFile, content, 'utf-8')
+    const wResult = writeFile(teamFile, content, app.fileStore.studioDir)
+    if (!wResult.ok) throw new ValidationError(wResult.error)
 
     app.fileStore.rebuild()
 
@@ -133,11 +133,8 @@ export async function teamsPlugin(app: FastifyInstance) {
     }
 
     // Read existing YAML, merge updates
-    const existing = yaml.load(fs.readFileSync(team.filePath, 'utf-8')) as {
-      bundle?: { name?: string; icon?: string; description?: string }
-      agents?: string[]
-      party?: string
-    }
+    type TeamYaml = { bundle?: { name?: string; icon?: string; description?: string }; agents?: string[]; party?: string }
+    const existing: TeamYaml = (yaml.load(fs.readFileSync(team.filePath, 'utf-8')) as TeamYaml | null) ?? {}
 
     if (body.name !== undefined) existing.bundle = { ...existing.bundle, name: body.name }
     if (body.icon !== undefined) existing.bundle = { ...existing.bundle, icon: body.icon }
@@ -193,6 +190,6 @@ export async function teamsPlugin(app: FastifyInstance) {
     if (!result.ok) throw new ValidationError(result.error)
 
     app.fileStore.rebuild()
-    return { ok: true, path: absPath }
+    return { ok: true }
   })
 }

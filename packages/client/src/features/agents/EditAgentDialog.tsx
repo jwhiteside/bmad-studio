@@ -20,7 +20,6 @@ export function EditAgentDialog({ agent, onClose, onSaved }: EditAgentDialogProp
   const [title, setTitle] = useState(agent.title || '')
   const [role, setRole] = useState(agent.role || '')
   const [icon, setIcon] = useState(agent.icon || '')
-  const [_description, _setDescription] = useState(agent.role || '')
   const [discussion, setDiscussion] = useState(agent.discussion)
 
   // Skills
@@ -75,29 +74,25 @@ export function EditAgentDialog({ agent, onClose, onSaved }: EditAgentDialogProp
         }
       }
 
-      // For built-in agents, write override content
-      if (isBuiltIn) {
-        const overrideContent = [
-          '# Agent Override',
-          '',
-          `title: "${title}"`,
-          `role: "${role}"`,
-          icon ? `icon: "${icon}"` : '',
-          `discussion: ${discussion}`,
-          '',
-        ]
-          .filter(Boolean)
-          .join('\n')
+      // Write override content for all agents
+      const escapeYaml = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+      const overrideContent = [
+        `title: "${escapeYaml(title)}"`,
+        `role: "${escapeYaml(role)}"`,
+        icon ? `icon: "${escapeYaml(icon)}"` : null,
+        `discussion: ${discussion}`,
+      ]
+        .filter((line): line is string => line !== null)
+        .join('\n') + '\n'
 
-        const resp = await fetch(`/api/agents/${encodeURIComponent(agent.id)}/override`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: overrideContent }),
-        })
-        if (!resp.ok) {
-          const data = (await resp.json()) as { error?: { message?: string } }
-          throw new Error(data.error?.message ?? 'Failed to save override')
-        }
+      const resp = await fetch(`/api/agents/${encodeURIComponent(agent.id)}/override`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: overrideContent }),
+      })
+      if (!resp.ok) {
+        const data = (await resp.json()) as { error?: { message?: string } }
+        throw new Error(data.error?.message ?? 'Failed to save override')
       }
 
       await queryClient.invalidateQueries({ queryKey: ['agents'] })

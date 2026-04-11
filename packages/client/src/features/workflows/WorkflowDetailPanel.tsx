@@ -15,8 +15,8 @@ type WorkflowDetailPanelProps = {
 }
 
 function extractRelativePath(filePath: string): string {
-  const bmadIndex = filePath.indexOf('_bmad/')
-  return bmadIndex >= 0 ? filePath.slice(bmadIndex + 6) : filePath
+  const bmadIndex = filePath.lastIndexOf('/_bmad/')
+  return bmadIndex >= 0 ? filePath.slice(bmadIndex + 7) : filePath
 }
 
 function dirName(fullPath: string): string {

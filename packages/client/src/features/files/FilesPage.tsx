@@ -96,8 +96,9 @@ export function FilesPage() {
       setContentLoading(true)
 
       // Extract relative path from full path (strip everything up to and including _bmad/)
-      const bmadIndex = fullPath.indexOf('_bmad/')
-      const relativePath = bmadIndex >= 0 ? fullPath.slice(bmadIndex + 6) : fullPath
+      // Use lastIndexOf so project roots that contain "_bmad/" in their own name don't cause mismatch.
+      const bmadIndex = fullPath.lastIndexOf('/_bmad/')
+      const relativePath = bmadIndex >= 0 ? fullPath.slice(bmadIndex + 7) : fullPath
 
       try {
         const resp = await fetch(`/api/files/${relativePath}`)

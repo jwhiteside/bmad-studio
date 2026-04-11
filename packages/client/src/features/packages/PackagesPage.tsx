@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
-  Package, X, Users, UsersRound, Zap, GitBranch, Plus, Trash2, AlertTriangle,
-  Upload, Download, FileText, Pencil, ChevronDown, ChevronRight,
+  Package, X, Users, UsersRound, Zap, GitBranch, Plus, Trash2,
+  Upload, Download, FileText, Pencil, ChevronDown, ChevronRight, RefreshCw, Loader2,
 } from 'lucide-react'
 
 import type { TeamListItem } from '@bmad-studio/shared'
@@ -11,7 +11,9 @@ import { EmptyState } from '../../shared/EmptyState.js'
 import { EditModuleDialog } from './EditModuleDialog.js'
 import { ExportPackageDialog } from './ExportPackageDialog.js'
 import { InstallModuleDialog } from './InstallModuleDialog.js'
+import { RemoveModuleDialog } from './RemoveModuleDialog.js'
 import { useDetailParam } from '../../hooks/use-detail-param.js'
+import { useNotifications } from '../../layout/NotificationProvider.js'
 import { SkeletonCard } from '../../shared/Skeleton.js'
 
 type ModuleInfo = {
@@ -145,108 +147,6 @@ function CreateModuleDialog({
           >
             <Plus size={14} />
             {submitting ? 'Creating...' : 'Create'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// --- Remove Module Dialog ---
-
-function RemoveModuleDialog({
-  module,
-  onClose,
-  onRemoved,
-}: {
-  module: ModuleInfo
-  onClose: () => void
-  onRemoved: () => void
-}) {
-  const [confirmName, setConfirmName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-
-  const confirmed = confirmName === module.name
-
-  const handleRemove = async () => {
-    if (!confirmed) return
-    setSubmitting(true)
-    setError(null)
-    try {
-      const resp = await fetch(`/api/modules/${encodeURIComponent(module.name)}`, {
-        method: 'DELETE',
-      })
-      if (!resp.ok) {
-        const data = (await resp.json()) as { error?: { message?: string } }
-        throw new Error(data.error?.message ?? 'Failed to remove module')
-      }
-      onRemoved()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove module')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-lg shadow-xl w-full max-w-md p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <AlertTriangle size={20} className="text-[var(--color-error)]" />
-          <h2 className="text-lg font-bold">Remove Module</h2>
-        </div>
-
-        <div className="space-y-4">
-          <p className="text-sm">
-            This will permanently delete the <strong>{module.name}</strong> module and all its contents:
-          </p>
-
-          <div className="text-sm text-[var(--color-muted)] p-3 rounded-md bg-[var(--color-surface-raised)] space-y-1">
-            <p>{module.agentCount} agent(s)</p>
-            <p>{module.skillCount} skill(s)</p>
-            <p>{module.workflowCount} workflow(s)</p>
-          </div>
-
-          {module.source === 'custom' && (
-            <p className="text-sm text-[var(--color-warning)] flex items-center gap-1.5">
-              <AlertTriangle size={14} />
-              Custom modules cannot be recovered unless tracked by git.
-            </p>
-          )}
-
-          <div>
-            <label className="block text-sm mb-1">
-              Type <strong>{module.name}</strong> to confirm:
-            </label>
-            <input
-              type="text"
-              value={confirmName}
-              onChange={(e) => setConfirmName(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-error)] focus:outline-none"
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-[var(--color-error)]">{error}</p>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleRemove}
-            disabled={!confirmed || submitting}
-            className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-error)] text-white hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-          >
-            <Trash2 size={14} />
-            {submitting ? 'Removing...' : 'Remove Module'}
           </button>
         </div>
       </div>
@@ -543,6 +443,54 @@ export function ModulesPage() {
   // Story 12.3: Export state
   const [exportManifest, setExportManifest] = useState<ExportManifest | null>(null)
   const [exporting, setExporting] = useState(false)
+
+  // Story 15.8: Regenerate IDE skills state
+  const [regenerating, setRegenerating] = useState<string | null>(null)
+  const { notify } = useNotifications()
+
+  const handleRegenerateSkills = useCallback(
+    async (moduleName: string) => {
+      setRegenerating(moduleName)
+      try {
+        const resp = await fetch(
+          `/api/modules/${encodeURIComponent(moduleName)}/regenerate-skills`,
+          { method: 'POST' },
+        )
+        const data = await resp.json()
+        if (!resp.ok || !data.ok) {
+          const message =
+            (data?.error?.message as string | undefined) ??
+            (data?.error as string | undefined) ??
+            'Failed to regenerate IDE skills'
+          throw new Error(message)
+        }
+        const regenerated = (data.regenerated as Record<string, number>) ?? {}
+        const total = Object.values(regenerated).reduce((a, b) => a + b, 0)
+        const ideCount = Object.keys(regenerated).length
+        if (ideCount === 0) {
+          notify(
+            'info',
+            `No IDE skills generated for "${moduleName}"`,
+            'No IDEs are configured in manifest.yaml `ides:` — add `claude-code` or `antigravity` and try again.',
+          )
+        } else {
+          notify(
+            'success',
+            `Regenerated ${total} skill${total === 1 ? '' : 's'} across ${ideCount} IDE${ideCount === 1 ? '' : 's'}`,
+          )
+        }
+      } catch (err) {
+        notify(
+          'error',
+          `Failed to regenerate IDE skills for "${moduleName}"`,
+          err instanceof Error ? err.message : String(err),
+        )
+      } finally {
+        setRegenerating(null)
+      }
+    },
+    [notify],
+  )
 
   const loadModules = useCallback(async () => {
     try {
@@ -929,6 +877,21 @@ export function ModulesPage() {
               {exporting ? 'Exporting...' : 'Export Module'}
             </button>
 
+            {/* Story 15.8: Regenerate IDE Skills Button */}
+            <button
+              onClick={() => handleRegenerateSkills(selected.name)}
+              disabled={regenerating === selected.name}
+              title="Regenerate IDE skill launchers from the current module contents"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:border-[var(--color-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {regenerating === selected.name ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <RefreshCw size={14} />
+              )}
+              {regenerating === selected.name ? 'Regenerating...' : 'Regenerate IDE Skills'}
+            </button>
+
             {selected.source !== 'built-in' && (
               <button
                 onClick={() => setRemoveTarget(selected)}
@@ -955,7 +918,7 @@ export function ModulesPage() {
 
       {removeTarget && (
         <RemoveModuleDialog
-          module={removeTarget}
+          moduleName={removeTarget.name}
           onClose={() => setRemoveTarget(null)}
           onRemoved={() => {
             setRemoveTarget(null)

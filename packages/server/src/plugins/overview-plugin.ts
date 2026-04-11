@@ -32,7 +32,7 @@ export async function overviewPlugin(app: FastifyInstance) {
             icon: a.icon,
             role: a.role,
             communicationStyle: a.communicationStyle,
-            skillCount: a.skills.length,
+            skillCount: (a.skills ?? []).length,
             module: a.module,
           })),
           count: index.agents.filter((a) => a.name || a.title).length,

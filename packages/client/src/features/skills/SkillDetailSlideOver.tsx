@@ -53,8 +53,8 @@ function ReferencedFile({
     try {
       // Resolve relative to skill file's directory
       const skillDir = skillFilePath.substring(0, skillFilePath.lastIndexOf('/'))
-      const bmadIndex = skillDir.indexOf('_bmad/')
-      const relDir = bmadIndex >= 0 ? skillDir.slice(bmadIndex + 6) : skillDir
+      const bmadIndex = skillDir.lastIndexOf('/_bmad/')
+      const relDir = bmadIndex >= 0 ? skillDir.slice(bmadIndex + 7) : skillDir
       const refFile = reference.replace('./', '')
       const fullPath = relDir ? `${relDir}/${refFile}` : refFile
 

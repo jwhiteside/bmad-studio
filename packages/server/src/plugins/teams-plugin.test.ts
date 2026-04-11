@@ -35,6 +35,7 @@ party: "./default-party.csv"
 "dev","Amelia","Dev","💻","Dev","Succinct","Senior dev","Tests first","bmm","agents/dev.md"
 `,
     )
+    fs.mkdirSync(path.join(tmpDir, '.bmad-studio'), { recursive: true })
   })
 
   afterEach(() => {
@@ -100,6 +101,7 @@ party: "./default-party.csv"
     expect(data.content).toContain('name,displayName,title')
     expect(data.content).toContain('analyst')
     expect(data.content).toContain('Mary')
+    expect(data.path).toBeUndefined()
 
     await app.close()
   })
@@ -151,6 +153,56 @@ party: "./default-party.csv"
     const listResponse = await app.inject({ method: 'GET', url: '/api/teams' })
     const teams = JSON.parse(listResponse.body)
     expect(teams).toHaveLength(0)
+
+    await app.close()
+  })
+
+  it('PUT /api/teams/:id updates team metadata', async () => {
+    const app = await createTestApp()
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/teams/team-fullstack',
+      payload: {
+        name: 'Updated Team',
+        icon: '🔥',
+        description: 'Updated description',
+      },
+    })
+    expect(response.statusCode).toBe(200)
+    const data = JSON.parse(response.body)
+    expect(data.ok).toBe(true)
+
+    // Verify the team list reflects the changes
+    const listResponse = await app.inject({ method: 'GET', url: '/api/teams' })
+    const teams = JSON.parse(listResponse.body)
+    const updated = teams.find((t: { id: string }) => t.id === 'team-fullstack')
+    expect(updated).toBeDefined()
+    expect(updated.name).toBe('Updated Team')
+    expect(updated.icon).toBe('🔥')
+
+    await app.close()
+  })
+
+  it('PUT /api/teams/:id/party updates CSV content', async () => {
+    const app = await createTestApp()
+
+    const newCsv = 'name,displayName\n"alice","Alice"\n'
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/teams/team-fullstack/party',
+      payload: { content: newCsv },
+    })
+    expect(response.statusCode).toBe(200)
+    const data = JSON.parse(response.body)
+    expect(data.ok).toBe(true)
+
+    // The response must NOT expose an absolute path
+    expect(data.path).toBeUndefined()
+
+    // Verify file on disk
+    const partyPath = path.join(tmpDir, '_bmad', 'bmm', 'teams', 'default-party.csv')
+    expect(fs.readFileSync(partyPath, 'utf-8')).toBe(newCsv)
 
     await app.close()
   })
