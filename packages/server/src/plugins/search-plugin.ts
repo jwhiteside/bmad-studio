@@ -1,9 +1,11 @@
 import type { FastifyInstance } from 'fastify'
 
 type SearchResult = {
-  type: 'agent' | 'skill' | 'workflow'
+  type: 'agent' | 'skill' | 'workflow' | 'team'
   id: string
   name: string
+  title?: string
+  icon?: string
   description: string
   module?: string
 }
@@ -17,11 +19,17 @@ export async function searchPlugin(app: FastifyInstance) {
     const results: SearchResult[] = []
 
     for (const agent of index.agents) {
-      if (agent.name.toLowerCase().includes(query) || agent.role.toLowerCase().includes(query)) {
+      if (
+        agent.name.toLowerCase().includes(query) ||
+        (agent.title && agent.title.toLowerCase().includes(query)) ||
+        agent.role.toLowerCase().includes(query)
+      ) {
         results.push({
           type: 'agent',
           id: agent.id,
           name: agent.name,
+          title: agent.title,
+          icon: agent.icon,
           description: agent.role,
           module: agent.module,
         })
@@ -58,6 +66,22 @@ export async function searchPlugin(app: FastifyInstance) {
       }
     }
 
-    return results
+    for (const team of index.teams) {
+      if (
+        team.name.toLowerCase().includes(query) ||
+        (team.description && team.description.toLowerCase().includes(query))
+      ) {
+        results.push({
+          type: 'team',
+          id: team.id,
+          name: team.name,
+          icon: team.icon,
+          description: team.description ?? '',
+          module: team.module,
+        })
+      }
+    }
+
+    return results.slice(0, 20)
   })
 }

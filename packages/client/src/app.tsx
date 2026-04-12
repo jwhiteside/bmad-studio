@@ -18,6 +18,7 @@ import { FilesPage } from './features/files/FilesPage.js'
 import { SettingsPage } from './features/settings/SettingsPage.js'
 import { AboutPage } from './features/about/AboutPage.js'
 import { CommandsPage } from './features/commands/CommandsPage.js'
+import { ToolkitPage } from './features/toolkit/ToolkitPage.js'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,7 @@ export function App() {
               <Route path="workspace" element={<WorkspacePage />} />
               <Route path="modules" element={<ModulesPage />} />
               <Route path="files" element={<FilesPage />} />
+              <Route path="toolkit" element={<ToolkitPage />} />
               <Route path="commands" element={<CommandsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="about" element={<AboutPage />} />

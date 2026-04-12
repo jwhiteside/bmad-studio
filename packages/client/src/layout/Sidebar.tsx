@@ -18,6 +18,8 @@ import {
   FolderOpen,
   ChevronDown,
   Terminal,
+  Layers,
+  Search,
 } from 'lucide-react'
 
 import { toggleTheme } from '../lib/theme.js'
@@ -39,6 +41,7 @@ const navItems: Array<{
   { to: '/teams', label: 'Teams', icon: UsersRound, badgeKey: 'teams' },
   { to: '/skills', label: 'Skills', icon: Zap, badgeKey: 'skills' },
   { to: '/workflows', label: 'Workflows', icon: GitBranch, badgeKey: 'workflows' },
+  { to: '/toolkit', label: 'Toolkit', icon: Layers },
   { to: '/connections', label: 'Data Sources', icon: Plug, badgeKey: 'connections' },
   { to: '/modules', label: 'Modules', icon: Package, badgeKey: 'modules' },
 ]
@@ -196,7 +199,17 @@ export function Sidebar() {
         )}
       </div>
 
-      <nav className="flex-1 px-2 space-y-1" aria-label="Main navigation">
+      <nav className="flex-1 px-2 space-y-1 overflow-y-auto" aria-label="Main navigation">
+        {/* Search shortcut */}
+        <button
+          onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+          className="w-full flex items-center gap-2 px-3 py-2 mb-1 rounded-md text-sm text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-raised)] transition-colors"
+        >
+          <Search size={15} />
+          <span className="flex-1 text-left">Search...</span>
+          <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--color-border-subtle)]">⌘K</kbd>
+        </button>
+
         {navItems.map((item) => (
           <NavItem
             key={item.to}
