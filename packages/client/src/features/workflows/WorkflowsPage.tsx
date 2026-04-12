@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react'
-import { GitBranch, List, LayoutGrid, Plus, HelpCircle, X, Users, Layers, BookMarked } from 'lucide-react'
+import { GitBranch, Plus, HelpCircle, X, Users, Layers, BookMarked } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { WORKFLOW_TYPE_DEFINITIONS } from '@bmad-studio/shared'
 import type { WorkflowListItem, WorkflowType } from '@bmad-studio/shared'
 
-import { useWorkflows, useWorkflowDetail } from './use-workflows.js'
+import { useWorkflows } from './use-workflows.js'
 import { WorkflowDetailPanel } from './WorkflowDetailPanel.js'
-import { WorkflowGraph } from './WorkflowGraph.js'
 import { EmptyState } from '../../shared/EmptyState.js'
 import { EntityPageHeader } from '../../shared/EntityPageHeader.js'
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js'
@@ -19,9 +19,9 @@ const TYPE_BADGE_STYLES: Record<string, string> = {
 }
 
 const TYPE_TOOLTIPS: Record<string, string> = {
-  'step-based': 'Step Workflow: gives a single agent a structured sequence of steps to follow. Best for linear, single-agent tasks.',
-  'agent-based': 'Agent Workflow: orchestrates multiple specialised agents in sequence. Best for multi-phase work like sprint planning or architecture design.',
-  composite: 'Composite Workflow: combines step-based and agent-based sections. Best for complex processes that need both structured steps and agent hand-offs.',
+  'step-based': `${WORKFLOW_TYPE_DEFINITIONS['step-based'].label}: ${WORKFLOW_TYPE_DEFINITIONS['step-based'].description}`,
+  'agent-based': `${WORKFLOW_TYPE_DEFINITIONS['agent-based'].label}: ${WORKFLOW_TYPE_DEFINITIONS['agent-based'].description}`,
+  composite: `${WORKFLOW_TYPE_DEFINITIONS.composite.label}: ${WORKFLOW_TYPE_DEFINITIONS.composite.description}`,
 }
 
 export function WorkflowTypeBadge({ type }: { type?: WorkflowType }) {
@@ -67,27 +67,27 @@ function groupByPhase(workflows: WorkflowListItem[]): PhaseGroup[] {
 function TypeGuide({ onClose }: { onClose: () => void }) {
   const types = [
     {
-      label: 'Step Workflow',
+      label: WORKFLOW_TYPE_DEFINITIONS['step-based'].label,
       badge: <WorkflowTypeBadge type="step-based" />,
       icon: <GitBranch size={20} className="text-[var(--color-muted)]" />,
-      description: 'One agent, structured sequence. The workflow gives a single agent a numbered list of steps to follow — like a recipe.',
-      bestFor: ['Creating a single document', 'Running a focused analysis', 'Guided single-session tasks'],
+      description: WORKFLOW_TYPE_DEFINITIONS['step-based'].description,
+      bestFor: WORKFLOW_TYPE_DEFINITIONS['step-based'].bestFor,
       example: '/create-prd',
     },
     {
-      label: 'Agent Workflow',
+      label: WORKFLOW_TYPE_DEFINITIONS['agent-based'].label,
       badge: <WorkflowTypeBadge type="agent-based" />,
       icon: <Users size={20} className="text-purple-400" />,
-      description: 'Multiple specialists in sequence. Each phase is handed to a different agent. Like a relay race — the baton passes between experts.',
-      bestFor: ['Sprint planning', 'Architecture design', 'Multi-phase deliverables needing different expertise'],
+      description: WORKFLOW_TYPE_DEFINITIONS['agent-based'].description,
+      bestFor: WORKFLOW_TYPE_DEFINITIONS['agent-based'].bestFor,
       example: '/run-sprint',
     },
     {
-      label: 'Composite Workflow',
+      label: WORKFLOW_TYPE_DEFINITIONS.composite.label,
       badge: <WorkflowTypeBadge type="composite" />,
       icon: <Layers size={20} className="text-blue-400" />,
-      description: 'The most flexible type. Some phases are structured step sequences; others hand off to specialist agents. Combines both patterns.',
-      bestFor: ['Complex processes needing both structured steps and agent handoffs', 'Workflows with parallel tracks'],
+      description: WORKFLOW_TYPE_DEFINITIONS.composite.description,
+      bestFor: WORKFLOW_TYPE_DEFINITIONS.composite.bestFor,
       example: '/bmad-full-pipeline',
     },
   ]
@@ -135,14 +135,11 @@ function TypeGuide({ onClose }: { onClose: () => void }) {
 
 export function WorkflowsPage() {
   const { data: workflows, isLoading, refetch } = useWorkflows()
-  const [view, setView] = useState<'list' | 'graph'>('list')
   const [showCreate, setShowCreate] = useState(false)
   const [showTypeGuide, setShowTypeGuide] = useState(false)
   const [selectedId, setSelectedId] = useDetailParam('detail')
   const [activeModule, setActiveModule] = useState<string>('all')
   const [search, setSearch] = useState('')
-  const [graphWorkflowId, setGraphWorkflowId] = useState<string | null>(null)
-  const { data: graphWorkflow } = useWorkflowDetail(graphWorkflowId ?? '')
 
   const modules = useMemo(() => {
     if (!workflows) return []
@@ -254,38 +251,13 @@ export function WorkflowsPage() {
               <Plus size={14} />
               New Workflow
             </button>
-            <div className="flex gap-1 bg-[var(--color-surface-raised)] rounded-md p-0.5">
-              <button
-                onClick={() => setView('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded min-h-[36px] transition-colors ${
-                  view === 'list'
-                    ? 'bg-[var(--color-bg)] text-[var(--color-text)] font-bold shadow-sm'
-                    : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
-                }`}
-              >
-                <List size={14} />
-                List
-              </button>
-              <button
-                onClick={() => setView('graph')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded min-h-[36px] transition-colors ${
-                  view === 'graph'
-                    ? 'bg-[var(--color-bg)] text-[var(--color-text)] font-bold shadow-sm'
-                    : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
-                }`}
-              >
-                <LayoutGrid size={14} />
-                Graph
-              </button>
-            </div>
             </div>
           }
         />
 
         {showTypeGuide && <TypeGuide onClose={() => setShowTypeGuide(false)} />}
 
-        {view === 'list' && (
-          <div className="space-y-6">
+        <div className="space-y-6">
             {phaseGroups.map(([phase, wfs]) => (
               <div key={phase}>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2 px-1">
@@ -333,40 +305,6 @@ export function WorkflowsPage() {
               </div>
             ))}
           </div>
-        )}
-
-        {view === 'graph' && (
-          <div className="space-y-4">
-            {/* Dropdown selector */}
-            <select
-              value={graphWorkflowId ?? ''}
-              onChange={(e) => setGraphWorkflowId(e.target.value || null)}
-              className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] min-h-[36px]"
-            >
-              <option value="">Select a workflow...</option>
-              {workflows.map((wf) => (
-                <option key={wf.id} value={wf.id}>
-                  {wf.name}{wf.module ? ` (${wf.module})` : ''}
-                </option>
-              ))}
-            </select>
-
-            {!graphWorkflowId && (
-              <div className="flex items-center justify-center h-64 rounded-lg border border-dashed border-[var(--color-border-subtle)] text-[var(--color-muted)]">
-                <p className="text-sm">Select a workflow above to view its graph</p>
-              </div>
-            )}
-
-            {graphWorkflow && (
-              <WorkflowGraph
-                workflow={graphWorkflow}
-                onStepClick={() => {
-                  setSelectedId(graphWorkflowId)
-                }}
-              />
-            )}
-          </div>
-        )}
       </div>
 
       {selectedId && (

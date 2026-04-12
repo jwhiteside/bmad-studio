@@ -1,5 +1,32 @@
 export type WorkflowType = 'step-based' | 'agent-based' | 'composite'
 
+/**
+ * Canonical workflow type definitions — single source of truth.
+ * D1 decision: step-based = single agent, structured steps.
+ * All UI surfaces must import descriptions from here.
+ */
+export const WORKFLOW_TYPE_DEFINITIONS: Record<WorkflowType, {
+  label: string
+  description: string
+  bestFor: string[]
+}> = {
+  'step-based': {
+    label: 'Step Workflow',
+    description: 'A single agent follows a structured sequence of numbered steps — like a recipe. The workflow gives one agent clear, ordered instructions to follow.',
+    bestFor: ['Creating a single document', 'Running a focused analysis', 'Guided single-session tasks'],
+  },
+  'agent-based': {
+    label: 'Agent Workflow',
+    description: 'Multiple specialist agents in sequence. Each phase is handed to a different agent — like a relay race where the baton passes between experts.',
+    bestFor: ['Sprint planning', 'Architecture design', 'Multi-phase deliverables needing different expertise'],
+  },
+  composite: {
+    label: 'Composite Workflow',
+    description: 'Combines step-based and agent-based sections. Some phases are handled by a single agent following steps, others hand off to specialist agents.',
+    bestFor: ['Complex processes needing both structured steps and agent handoffs', 'Workflows with parallel tracks'],
+  },
+}
+
 export type WorkflowTemplate = {
   filePath: string
   name: string

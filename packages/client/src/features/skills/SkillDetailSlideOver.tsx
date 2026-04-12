@@ -163,6 +163,7 @@ export function SkillDetailSlideOver({ skillId, onClose }: SkillDetailSlideOverP
                 filePath={skill.filePath}
                 onChange={() => {}}
                 readOnly
+                hideModeTabs
               />
             </div>
           </div>

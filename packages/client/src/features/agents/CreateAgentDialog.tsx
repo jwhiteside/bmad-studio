@@ -143,6 +143,26 @@ export function CreateAgentDialog({ onClose, onCreated }: CreateAgentDialogProps
               </div>
             </div>
 
+            {/* Parent Module — above the fold per UX-DR4 */}
+            <div>
+              <label className="block text-xs font-bold mb-1">
+                Parent Module <span className="text-[var(--color-error)]">*</span>
+              </label>
+              {modules.length > 0 ? (
+                <select
+                  value={moduleName}
+                  onChange={(e) => setModuleName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] outline-none min-h-[36px]"
+                >
+                  {modules.map((m) => (
+                    <option key={m.name} value={m.name}>{m.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-xs text-[var(--color-muted)] py-2">No custom modules found. Create a module first.</p>
+              )}
+            </div>
+
             {/* Display title */}
             <div>
               <label className="block text-xs font-bold mb-1">Display Title</label>
@@ -176,26 +196,6 @@ export function CreateAgentDialog({ onClose, onCreated }: CreateAgentDialogProps
                 rows={4}
                 className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] outline-none resize-none"
               />
-            </div>
-
-            {/* Module */}
-            <div>
-              <label className="block text-xs font-bold mb-1">
-                Module <span className="text-[var(--color-error)]">*</span>
-              </label>
-              {modules.length > 0 ? (
-                <select
-                  value={moduleName}
-                  onChange={(e) => setModuleName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] outline-none min-h-[36px]"
-                >
-                  {modules.map((m) => (
-                    <option key={m.name} value={m.name}>{m.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-xs text-[var(--color-muted)] py-2">No custom modules found. Create a module first.</p>
-              )}
             </div>
 
             {/* Skills */}

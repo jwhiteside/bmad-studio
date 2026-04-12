@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, X, Trash2, Upload, GitCommit, Bot, GitMerge, ArrowRight } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import { WORKFLOW_TYPE_DEFINITIONS } from '@bmad-studio/shared'
 
 type CreateWorkflowDialogProps = {
   onClose: () => void
@@ -22,29 +23,29 @@ function toKebab(s: string): string {
 const TYPE_OPTIONS = [
   {
     value: 'step-based' as const,
-    label: 'Step-based',
+    label: WORKFLOW_TYPE_DEFINITIONS['step-based'].label,
     icon: GitCommit,
     color: 'text-[var(--color-accent)] bg-blue-500/10 border-blue-500/30',
-    description: 'A sequence of discrete steps, each assigned to an agent. Best for multi-phase processes where handoffs between agents matter.',
-    bestFor: ['Multi-agent pipelines', 'Document creation workflows', 'Review processes'],
-    example: '/create-story → /create-tests → /review',
+    description: WORKFLOW_TYPE_DEFINITIONS['step-based'].description,
+    bestFor: WORKFLOW_TYPE_DEFINITIONS['step-based'].bestFor,
+    example: '/create-prd',
   },
   {
     value: 'agent-based' as const,
-    label: 'Agent-based',
+    label: WORKFLOW_TYPE_DEFINITIONS['agent-based'].label,
     icon: Bot,
     color: 'text-[var(--color-success)] bg-green-500/10 border-green-500/30',
-    description: 'A single agent handles the entire workflow. Best for focused tasks that one agent can complete end-to-end.',
-    bestFor: ['Single-agent tasks', 'Quick transformations', 'Standalone operations'],
-    example: '/write-prd',
+    description: WORKFLOW_TYPE_DEFINITIONS['agent-based'].description,
+    bestFor: WORKFLOW_TYPE_DEFINITIONS['agent-based'].bestFor,
+    example: '/run-sprint',
   },
   {
     value: 'composite' as const,
-    label: 'Composite',
+    label: WORKFLOW_TYPE_DEFINITIONS.composite.label,
     icon: GitMerge,
     color: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
-    description: 'Orchestrates multiple sub-workflows. Best for large processes that span multiple phases or reuse existing workflows.',
-    bestFor: ['Full project lifecycle', 'Sprint orchestration', 'Multi-phase delivery'],
+    description: WORKFLOW_TYPE_DEFINITIONS.composite.description,
+    bestFor: WORKFLOW_TYPE_DEFINITIONS.composite.bestFor,
     example: '/plan → /sprint → /review',
   },
 ]
@@ -315,7 +316,7 @@ export function CreateWorkflowDialog({ onClose, onCreated }: CreateWorkflowDialo
             <>
               {/* Name */}
               <div>
-                <label className="block text-sm font-bold mb-1">Name</label>
+                <label className="block text-xs font-bold mb-1">Name</label>
                 <input
                   type="text"
                   value={name}
@@ -329,9 +330,24 @@ export function CreateWorkflowDialog({ onClose, onCreated }: CreateWorkflowDialo
                 )}
               </div>
 
+              {/* Parent Module — above the fold per UX-DR4 */}
+              <div>
+                <label className="block text-xs font-bold mb-1">Parent Module</label>
+                <select
+                  value={moduleName}
+                  onChange={(e) => setModuleName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none"
+                >
+                  <option value="">Select a module...</option>
+                  {modules.map((m) => (
+                    <option key={m.name} value={m.name}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Description */}
               <div>
-                <label className="block text-sm font-bold mb-1">Description</label>
+                <label className="block text-xs font-bold mb-1">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -343,7 +359,7 @@ export function CreateWorkflowDialog({ onClose, onCreated }: CreateWorkflowDialo
 
               {/* Phase */}
               <div>
-                <label className="block text-sm font-bold mb-1">Phase (optional)</label>
+                <label className="block text-xs font-bold mb-1">Phase (optional)</label>
                 <select
                   value={phase}
                   onChange={(e) => setPhase(e.target.value)}
@@ -364,21 +380,6 @@ export function CreateWorkflowDialog({ onClose, onCreated }: CreateWorkflowDialo
                     className="w-full mt-2 px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none"
                   />
                 )}
-              </div>
-
-              {/* Module */}
-              <div>
-                <label className="block text-sm font-bold mb-1">Module</label>
-                <select
-                  value={moduleName}
-                  onChange={(e) => setModuleName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none"
-                >
-                  <option value="">Select a module...</option>
-                  {modules.map((m) => (
-                    <option key={m.name} value={m.name}>{m.name}</option>
-                  ))}
-                </select>
               </div>
 
               {/* Steps (step-based only) */}

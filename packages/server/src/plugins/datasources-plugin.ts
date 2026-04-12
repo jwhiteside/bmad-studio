@@ -249,9 +249,15 @@ export async function datasourcesPlugin(app: FastifyInstance) {
 
   // ---- IDE management ----
 
+  // Full list of IDEs supported by the BMAD method installer (hardcoded snapshot — update when BMAD adds new IDEs)
   const KNOWN_IDES = [
     { id: 'claude-code', label: 'Claude Code', description: 'Anthropic Claude Code CLI — skills become /slash-commands' },
-    { id: 'antigravity', label: 'Cursor (Antigravity)', description: 'Cursor IDE via Antigravity — skills sync to .antigravity/skills/' },
+    { id: 'cursor', label: 'Cursor', description: 'Cursor AI IDE — skills sync to .cursor/skills/' },
+    { id: 'windsurf', label: 'Windsurf', description: 'Windsurf IDE — skills sync to .windsurf/skills/' },
+    { id: 'github-copilot', label: 'GitHub Copilot', description: 'GitHub Copilot — skills sync to .github/chatmodes/' },
+    { id: 'vscode', label: 'VS Code', description: 'Visual Studio Code — skills sync via extension settings' },
+    { id: 'jetbrains', label: 'JetBrains', description: 'JetBrains IDEs (IntelliJ, WebStorm, etc.) — skills sync to .idea/' },
+    { id: 'antigravity', label: 'Antigravity', description: 'Antigravity IDE — skills sync to .antigravity/skills/' },
   ]
 
   // GET /api/ides — list configured + available IDEs

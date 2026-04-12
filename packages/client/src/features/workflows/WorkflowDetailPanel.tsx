@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
 
+import { WORKFLOW_TYPE_DEFINITIONS } from '@bmad-studio/shared'
 import type { WorkflowStep } from '@bmad-studio/shared'
 
 import { useWorkflowDetail } from './use-workflows.js'
@@ -367,9 +368,7 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
                 <WorkflowTypeBadge type={workflow.type} />
               </div>
               <p className="text-xs text-[var(--color-muted)]">
-                {workflow.type === 'step-based' && 'A step-based workflow gives a single agent a structured sequence of steps to follow. Best for linear, single-agent tasks like creating a document or running an analysis.'}
-                {workflow.type === 'agent-based' && 'An agent-based workflow orchestrates multiple specialised agents in sequence. Each step is handled by a different agent. Best for multi-phase work like sprint planning or architecture design.'}
-                {workflow.type === 'composite' && 'A composite workflow combines step-based and agent-based sections — some phases are handled by a single agent following steps, others hand off to specialised agents.'}
+                {WORKFLOW_TYPE_DEFINITIONS[workflow.type].description}
               </p>
             </div>
           )}

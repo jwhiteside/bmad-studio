@@ -13,6 +13,7 @@ type MarkdownEditorProps = {
   onSave?: (content: string) => void
   readOnly?: boolean
   defaultMode?: EditorMode
+  hideModeTabs?: boolean
 }
 
 export function MarkdownEditor({
@@ -22,6 +23,7 @@ export function MarkdownEditor({
   onSave,
   readOnly = false,
   defaultMode,
+  hideModeTabs = false,
 }: MarkdownEditorProps) {
   const [mode, setMode] = useState<EditorMode>(defaultMode ?? 'edit')
   const theme = useThemeStore((s) => s.theme)
@@ -45,21 +47,23 @@ export function MarkdownEditor({
         <span className="text-xs font-[var(--font-mono)] text-[var(--color-muted)] truncate mr-4">
           {filePath}
         </span>
-        <div className="flex gap-0.5 shrink-0">
-          {(['edit', 'preview', 'split'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`px-2.5 py-1 text-xs rounded transition-colors ${
-                mode === m
-                  ? 'bg-[var(--color-surface-raised)] text-[var(--color-text)] font-bold'
-                  : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
-              }`}
-            >
-              {m.charAt(0).toUpperCase() + m.slice(1)}
-            </button>
-          ))}
-        </div>
+        {!hideModeTabs && (
+          <div className="flex gap-0.5 shrink-0">
+            {(['edit', 'preview', 'split'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                  mode === m
+                    ? 'bg-[var(--color-surface-raised)] text-[var(--color-text)] font-bold'
+                    : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                {m.charAt(0).toUpperCase() + m.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Editor body */}
