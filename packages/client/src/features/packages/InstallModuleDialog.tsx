@@ -37,6 +37,7 @@ export function InstallModuleDialog({ onClose, onInstalled, initialSource }: Ins
   const [installing, setInstalling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [installed, setInstalled] = useState(false)
+  const [syncSummary, setSyncSummary] = useState<Record<string, number> | null>(null)
 
   // Clear preview and error when switching tabs
   useEffect(() => {
@@ -121,7 +122,7 @@ export function InstallModuleDialog({ onClose, onInstalled, initialSource }: Ins
           method: 'POST',
           body: fd,
         })
-        const data = (await resp.json()) as { ok: boolean; error?: { message?: string } | string }
+        const data = (await resp.json()) as { ok: boolean; skillsGenerated?: Record<string, number>; error?: { message?: string } | string }
         if (!data.ok) {
           const e = data.error
           throw new Error(
@@ -130,6 +131,7 @@ export function InstallModuleDialog({ onClose, onInstalled, initialSource }: Ins
               : String(e ?? 'Installation failed'),
           )
         }
+        if (data.skillsGenerated) setSyncSummary(data.skillsGenerated)
       } else {
         const sourceValue = activeTab === 'npm' ? npmValue : activeTab === 'github' ? githubValue : localValue
         const resp = await fetch('/api/modules/install', {
@@ -140,7 +142,7 @@ export function InstallModuleDialog({ onClose, onInstalled, initialSource }: Ins
             variables,
           }),
         })
-        const data = (await resp.json()) as { ok: boolean; error?: { message?: string } | string }
+        const data = (await resp.json()) as { ok: boolean; skillsGenerated?: Record<string, number>; error?: { message?: string } | string }
         if (!data.ok) {
           const e = data.error
           throw new Error(
@@ -149,9 +151,10 @@ export function InstallModuleDialog({ onClose, onInstalled, initialSource }: Ins
               : String(e ?? 'Installation failed'),
           )
         }
+        if (data.skillsGenerated) setSyncSummary(data.skillsGenerated)
       }
       setInstalled(true)
-      setTimeout(() => onInstalled(), 1500)
+      setTimeout(() => onInstalled(), 2500)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Installation failed')
     } finally {
@@ -361,9 +364,27 @@ export function InstallModuleDialog({ onClose, onInstalled, initialSource }: Ins
 
           {/* Success */}
           {installed && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-success)]">
-              <CheckCircle size={16} className="text-[var(--color-success)]" />
-              <span className="text-sm font-bold text-[var(--color-success)]">Installed successfully</span>
+            <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-success)] overflow-hidden">
+              <div className="flex items-center gap-2 p-3">
+                <CheckCircle size={16} className="text-[var(--color-success)]" />
+                <span className="text-sm font-bold text-[var(--color-success)]">Installed successfully</span>
+              </div>
+              {syncSummary && Object.keys(syncSummary).length > 0 && (
+                <div className="px-3 pb-3 pt-0 space-y-1 border-t border-[var(--color-success)]/20">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-muted)] mt-2">Skills synced to IDEs</p>
+                  {Object.entries(syncSummary).map(([ide, count]) => (
+                    <div key={ide} className="flex items-center justify-between text-xs">
+                      <span className="font-[var(--font-mono)] text-[var(--color-text)]">{ide}</span>
+                      <span className="text-[var(--color-success)] font-bold">{count} skill{count !== 1 ? 's' : ''}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {syncSummary && Object.keys(syncSummary).length === 0 && (
+                <div className="px-3 pb-3 border-t border-[var(--color-success)]/20">
+                  <p className="text-xs text-[var(--color-muted)] mt-2">No IDEs configured — skills were not generated. Add an IDE from the Connections page.</p>
+                </div>
+              )}
             </div>
           )}
 

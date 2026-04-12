@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
-  Plug, CheckCircle, Monitor, Settings, Plus, X, Trash2,
+  Plug, CheckCircle, Monitor, Plus, X, Trash2,
   Play, Copy, Database, Globe, Figma, Github, FileText,
-  Loader2,
+  Loader2, AlertCircle,
 } from 'lucide-react'
 
 import { EmptyState } from '../../shared/EmptyState.js'
@@ -14,6 +14,102 @@ type OverviewData = {
   sections: {
     ideConfigs?: { ides: string[]; count: number }
   }
+}
+
+type AvailableIde = { id: string; label: string; description: string }
+
+type IdeData = {
+  configured: Array<{ ide: string; configuredDate: string | null; lastUpdated: string | null }>
+  available: AvailableIde[]
+}
+
+type CoverageEntry = { module: string; synced: boolean; skillCount: number }
+
+// --- Add IDE Dialog ---
+
+function AddIdeDialog({ available, onClose, onAdded }: {
+  available: AvailableIde[]
+  onClose: () => void
+  onAdded: (ide: string, skillsGenerated: Record<string, number>) => void
+}) {
+  const [selected, setSelected] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleAdd = async () => {
+    if (!selected) return
+    setAdding(true)
+    setError(null)
+    try {
+      const resp = await fetch('/api/ides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ide: selected }),
+      })
+      const data = (await resp.json()) as { ok?: boolean; skillsGenerated?: Record<string, number>; error?: { message?: string } }
+      if (!resp.ok) throw new Error(data.error?.message ?? 'Failed to add IDE')
+      onAdded(selected, data.skillsGenerated ?? {})
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add IDE')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-[var(--color-bg)] rounded-xl border border-[var(--color-border-subtle)] shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border-subtle)]">
+          <div className="flex items-center gap-2">
+            <Monitor size={18} className="text-[var(--color-accent)]" />
+            <h2 className="text-lg font-bold">Add IDE</h2>
+          </div>
+          <button onClick={onClose} className="text-[var(--color-muted)] hover:text-[var(--color-text)]">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          <p className="text-sm text-[var(--color-muted)]">Select an IDE to configure. Skills from installed modules will be generated automatically.</p>
+          {available.length === 0 ? (
+            <p className="text-sm text-[var(--color-muted)] text-center py-4">All supported IDEs are already configured.</p>
+          ) : (
+            available.map((ide) => (
+              <button
+                key={ide.id}
+                onClick={() => setSelected(ide.id)}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+                  selected === ide.id
+                    ? 'border-[var(--color-accent)] bg-[var(--color-surface-raised)]'
+                    : 'border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] hover:bg-[var(--color-surface-raised)]'
+                }`}
+              >
+                <div className="w-8 h-8 rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] flex items-center justify-center shrink-0">
+                  <Monitor size={16} className="text-[var(--color-accent)]" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">{ide.label}</p>
+                  <p className="text-xs text-[var(--color-muted)]">{ide.description}</p>
+                </div>
+              </button>
+            ))
+          )}
+          {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
+        </div>
+        <div className="px-6 py-4 border-t border-[var(--color-border-subtle)] flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors">Cancel</button>
+          <button
+            onClick={handleAdd}
+            disabled={!selected || adding}
+            className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {adding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            {adding ? 'Adding...' : 'Add IDE'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 type DataSourceType = 'jira' | 'confluence' | 'figma' | 'github' | 'custom'
@@ -349,6 +445,9 @@ export function ConnectionsPage() {
   const [selectedIde, setSelectedIde] = useState<string | null>(null)
   const [configContent, setConfigContent] = useState<string | null>(null)
   const [configLoading, setConfigLoading] = useState(false)
+  const [ideData, setIdeData] = useState<IdeData | null>(null)
+  const [coverage, setCoverage] = useState<Record<string, CoverageEntry[]>>({})
+  const [showAddIde, setShowAddIde] = useState(false)
 
   // Data sources state
   const [datasources, setDatasources] = useState<DataSource[]>([])
@@ -370,6 +469,19 @@ export function ConnectionsPage() {
     }
   }, [])
 
+  const loadIdeData = useCallback(async () => {
+    try {
+      const [idesResp, coverageResp] = await Promise.all([
+        fetch('/api/ides'),
+        fetch('/api/ides/coverage'),
+      ])
+      if (idesResp.ok) setIdeData(await idesResp.json() as IdeData)
+      if (coverageResp.ok) setCoverage(await coverageResp.json() as Record<string, CoverageEntry[]>)
+    } catch {
+      // ignore
+    }
+  }, [])
+
   useEffect(() => {
     fetch('/api/overview')
       .then((r) => r.json())
@@ -378,7 +490,8 @@ export function ConnectionsPage() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }, [])
+    loadIdeData()
+  }, [loadIdeData])
 
   useEffect(() => {
     loadDatasources()
@@ -450,7 +563,7 @@ export function ConnectionsPage() {
     )
   }
 
-  const ides = data?.sections?.ideConfigs?.ides ?? []
+  const ides = ideData?.configured.map((c) => c.ide) ?? data?.sections?.ideConfigs?.ides ?? []
   const totalCount = ides.length + datasources.length
 
   return (
@@ -459,13 +572,24 @@ export function ConnectionsPage() {
         <h1 className="text-2xl font-extrabold">
           Connections ({totalCount})
         </h1>
-        <button
-          onClick={() => setShowAddDs(true)}
-          className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
-        >
-          <Plus size={14} />
-          Add Data Source
-        </button>
+        <div className="flex items-center gap-3">
+          {ideData && ideData.available.length > 0 && (
+            <button
+              onClick={() => setShowAddIde(true)}
+              className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors flex items-center gap-1.5"
+            >
+              <Monitor size={14} />
+              Add IDE
+            </button>
+          )}
+          <button
+            onClick={() => setShowAddDs(true)}
+            className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
+          >
+            <Plus size={14} />
+            Add Data Source
+          </button>
+        </div>
       </div>
 
       {/* Data Sources Section */}
@@ -611,23 +735,31 @@ export function ConnectionsPage() {
               </div>
             </div>
 
-            <div>
-              <h3 className="text-sm font-bold mb-2">Integration</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 p-2 rounded bg-[var(--color-surface-raised)] text-sm">
-                  <Settings size={14} className="text-[var(--color-muted)]" />
-                  <span>Agent commands</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded bg-[var(--color-surface-raised)] text-sm">
-                  <Settings size={14} className="text-[var(--color-muted)]" />
-                  <span>Skill shortcuts</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded bg-[var(--color-surface-raised)] text-sm">
-                  <Settings size={14} className="text-[var(--color-muted)]" />
-                  <span>Workflow triggers</span>
+            {/* Module skill coverage map */}
+            {coverage[selectedIde] && (
+              <div>
+                <h3 className="text-sm font-bold mb-2">Module Coverage</h3>
+                <p className="text-xs text-[var(--color-muted)] mb-3">Which modules have skills synced to this IDE.</p>
+                <div className="space-y-1.5">
+                  {coverage[selectedIde].length === 0 && (
+                    <p className="text-xs text-[var(--color-muted)]">No modules installed.</p>
+                  )}
+                  {coverage[selectedIde].map((entry) => (
+                    <div key={entry.module} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]">
+                      <div className="flex items-center gap-2">
+                        {entry.synced
+                          ? <CheckCircle size={13} className="text-[var(--color-success)] shrink-0" />
+                          : <AlertCircle size={13} className="text-[var(--color-warning)] shrink-0" />}
+                        <span className="text-sm font-[var(--font-mono)]">{entry.module}</span>
+                      </div>
+                      {entry.synced
+                        ? <span className="text-xs text-[var(--color-success)]">{entry.skillCount} skill{entry.skillCount !== 1 ? 's' : ''}</span>
+                        : <span className="text-xs text-[var(--color-warning)]">not synced</span>}
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            )}
 
             {configLoading && (
               <div className="h-32 rounded-lg bg-[var(--color-surface-raised)] animate-pulse" />
@@ -665,6 +797,20 @@ export function ConnectionsPage() {
           command={syncCommand.command}
           sourceName={syncCommand.name}
           onClose={() => setSyncCommand(null)}
+        />
+      )}
+
+      {/* Add IDE Dialog */}
+      {showAddIde && ideData && (
+        <AddIdeDialog
+          available={ideData.available}
+          onClose={() => setShowAddIde(false)}
+          onAdded={(_ide, _skills) => {
+            setShowAddIde(false)
+            loadIdeData()
+            // Refresh overview so IDE count updates in sidebar
+            fetch('/api/overview').then((r) => r.json()).then((d) => setData(d as OverviewData)).catch(() => {})
+          }}
         />
       )}
     </div>

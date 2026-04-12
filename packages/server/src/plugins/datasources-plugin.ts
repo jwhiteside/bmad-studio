@@ -1,11 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import yaml from 'js-yaml'
 import type { FastifyInstance } from 'fastify'
 
 import type { DataSource, DataSourceType } from '@bmad-studio/shared'
 
 import { ValidationError, NotFoundError } from '../core/errors.js'
+import { generateIdeSkillsForModule } from '../core/ide-skill-generator.js'
+import { readManifestSafe } from '../core/module-installer.js'
+import { writeFile } from '../core/write-service.js'
 
 const TEMPLATES: Record<string, Partial<DataSource>> = {
   jira: {
@@ -241,5 +245,106 @@ export async function datasourcesPlugin(app: FastifyInstance) {
 
     const command = buildSyncCommand(ds)
     return { command }
+  })
+
+  // ---- IDE management ----
+
+  const KNOWN_IDES = [
+    { id: 'claude-code', label: 'Claude Code', description: 'Anthropic Claude Code CLI — skills become /slash-commands' },
+    { id: 'antigravity', label: 'Cursor (Antigravity)', description: 'Cursor IDE via Antigravity — skills sync to .antigravity/skills/' },
+  ]
+
+  // GET /api/ides — list configured + available IDEs
+  app.get('/api/ides', async () => {
+    if (!('fileStore' in app)) return { configured: [], available: KNOWN_IDES }
+    const configuredIds = new Set(app.fileStore.getIndex().ideConfigs.map((c) => c.ide))
+    return {
+      configured: app.fileStore.getIndex().ideConfigs,
+      available: KNOWN_IDES.filter((ide) => !configuredIds.has(ide.id)),
+    }
+  })
+
+  // POST /api/ides — add and configure a new IDE, then generate skills
+  app.post('/api/ides', async (request, reply) => {
+    if (!('fileStore' in app)) throw new ValidationError('No project detected')
+
+    const body = request.body as { ide?: string }
+    const ideId = body.ide?.trim()
+    if (!ideId) throw new ValidationError('ide is required')
+    if (!KNOWN_IDES.some((k) => k.id === ideId)) throw new ValidationError(`Unknown IDE: "${ideId}"`)
+
+    const idesDir = path.join(app.fileStore.projectRoot, '_bmad', '_config', 'ides')
+    const idePath = path.join(idesDir, `${ideId}.yaml`)
+    if (fs.existsSync(idePath)) throw new ValidationError(`IDE "${ideId}" is already configured`)
+
+    const content = yaml.dump({
+      ide: ideId,
+      configured_date: new Date().toISOString(),
+      last_updated: new Date().toISOString(),
+      configuration: { _noConfigNeeded: true },
+    })
+
+    const writeResult = writeFile(idePath, content, app.fileStore.studioDir)
+    if (!writeResult.ok) throw new ValidationError(writeResult.error)
+
+    // Regenerate skills for all modules that declare this IDE
+    const manifestPath = path.join(app.fileStore.projectRoot, '_bmad', '_config', 'manifest.yaml')
+    const manifest = readManifestSafe(manifestPath)
+    const skillsGenerated: Record<string, number> = {}
+
+    if (manifest?.modules) {
+      for (const [modName] of Object.entries(manifest.modules)) {
+        const modManifest = readManifestSafe(manifestPath)
+        if (!modManifest?.ides?.includes(ideId)) continue
+        const genResult = generateIdeSkillsForModule(
+          app.fileStore.projectRoot, modName, modManifest, app.fileStore.studioDir, app.fileStore,
+        )
+        if (genResult.ok && genResult.skillsByIde[ideId]) {
+          skillsGenerated[modName] = genResult.skillsByIde[ideId].length
+        }
+      }
+    }
+
+    app.fileStore.rebuild()
+    reply.code(201)
+    return { ok: true, ide: ideId, skillsGenerated }
+  })
+
+  // GET /api/ides/coverage — per-IDE module coverage map
+  app.get('/api/ides/coverage', async () => {
+    if (!('fileStore' in app)) return {}
+
+    const projectRoot = app.fileStore.projectRoot
+    const manifestPath = path.join(projectRoot, '_bmad', '_config', 'manifest.yaml')
+    const manifest = readManifestSafe(manifestPath)
+    const configuredIdes = app.fileStore.getIndex().ideConfigs.map((c) => c.ide)
+    const IDE_DIRS: Record<string, string> = {
+      'claude-code': '.claude/skills',
+      antigravity: '.antigravity/skills',
+    }
+
+    const coverage: Record<string, Array<{ module: string; synced: boolean; skillCount: number }>> = {}
+
+    for (const ide of configuredIdes) {
+      const skillDir = IDE_DIRS[ide]
+      if (!skillDir) continue
+      const fullSkillDir = path.join(projectRoot, skillDir)
+      const existing = fs.existsSync(fullSkillDir)
+        ? fs.readdirSync(fullSkillDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)
+        : []
+
+      const modules: Array<{ module: string; synced: boolean; skillCount: number }> = []
+      if (manifest?.modules) {
+        for (const [modName] of Object.entries(manifest.modules)) {
+          const agentPrefix = `bmad-agent-${modName}-`
+          const otherPrefix = `bmad-${modName}-`
+          const matched = existing.filter((d) => d.startsWith(agentPrefix) || d.startsWith(otherPrefix))
+          modules.push({ module: modName, synced: matched.length > 0, skillCount: matched.length })
+        }
+      }
+      coverage[ide] = modules
+    }
+
+    return coverage
   })
 }
