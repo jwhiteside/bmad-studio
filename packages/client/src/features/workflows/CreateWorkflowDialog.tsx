@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, X, Trash2, Upload, GitCommit, Bot, GitMerge, ArrowRight } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import { WORKFLOW_TYPE_DEFINITIONS } from '@bmad-studio/shared'
 
 type CreateWorkflowDialogProps = {
   onClose: () => void
@@ -22,29 +23,29 @@ function toKebab(s: string): string {
 const TYPE_OPTIONS = [
   {
     value: 'step-based' as const,
-    label: 'Step-based',
+    label: WORKFLOW_TYPE_DEFINITIONS['step-based'].label,
     icon: GitCommit,
     color: 'text-[var(--color-accent)] bg-blue-500/10 border-blue-500/30',
-    description: 'A sequence of discrete steps, each assigned to an agent. Best for multi-phase processes where handoffs between agents matter.',
-    bestFor: ['Multi-agent pipelines', 'Document creation workflows', 'Review processes'],
-    example: '/create-story → /create-tests → /review',
+    description: WORKFLOW_TYPE_DEFINITIONS['step-based'].description,
+    bestFor: WORKFLOW_TYPE_DEFINITIONS['step-based'].bestFor,
+    example: '/create-prd',
   },
   {
     value: 'agent-based' as const,
-    label: 'Agent-based',
+    label: WORKFLOW_TYPE_DEFINITIONS['agent-based'].label,
     icon: Bot,
     color: 'text-[var(--color-success)] bg-green-500/10 border-green-500/30',
-    description: 'A single agent handles the entire workflow. Best for focused tasks that one agent can complete end-to-end.',
-    bestFor: ['Single-agent tasks', 'Quick transformations', 'Standalone operations'],
-    example: '/write-prd',
+    description: WORKFLOW_TYPE_DEFINITIONS['agent-based'].description,
+    bestFor: WORKFLOW_TYPE_DEFINITIONS['agent-based'].bestFor,
+    example: '/run-sprint',
   },
   {
     value: 'composite' as const,
-    label: 'Composite',
+    label: WORKFLOW_TYPE_DEFINITIONS.composite.label,
     icon: GitMerge,
     color: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
-    description: 'Orchestrates multiple sub-workflows. Best for large processes that span multiple phases or reuse existing workflows.',
-    bestFor: ['Full project lifecycle', 'Sprint orchestration', 'Multi-phase delivery'],
+    description: WORKFLOW_TYPE_DEFINITIONS.composite.description,
+    bestFor: WORKFLOW_TYPE_DEFINITIONS.composite.bestFor,
     example: '/plan → /sprint → /review',
   },
 ]

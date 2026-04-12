@@ -1,19 +1,20 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Zap, GitBranch, Search, Layers } from 'lucide-react'
+import { Users, UsersRound, Zap, GitBranch, Search, Layers } from 'lucide-react'
 
 import { useAgents } from '../agents/use-agents.js'
 import { useSkills } from '../skills/use-skills.js'
 import { useWorkflows } from '../workflows/use-workflows.js'
+import { useTeams } from '../teams/use-teams.js'
 import { SkillDetailSlideOver } from '../skills/SkillDetailSlideOver.js'
 import { WorkflowDetailPanel } from '../workflows/WorkflowDetailPanel.js'
 import { useDetailParam } from '../../hooks/use-detail-param.js'
 import { SkeletonList } from '../../shared/Skeleton.js'
 
-type FilterType = 'all' | 'agent' | 'skill' | 'workflow'
+type FilterType = 'all' | 'agent' | 'skill' | 'workflow' | 'team'
 
 type ToolkitItem = {
-  kind: 'agent' | 'skill' | 'workflow'
+  kind: 'agent' | 'skill' | 'workflow' | 'team'
   id: string
   name: string
   title?: string
@@ -28,13 +29,14 @@ export function ToolkitPage() {
   const { data: agents, isLoading: loadingAgents } = useAgents()
   const { data: skills, isLoading: loadingSkills } = useSkills()
   const { data: workflows, isLoading: loadingWorkflows } = useWorkflows()
+  const { data: teams, isLoading: loadingTeams } = useTeams()
   const [selectedSkillId, setSelectedSkillId] = useDetailParam('skill')
   const [selectedWorkflowId, setSelectedWorkflowId] = useDetailParam('workflow')
   const [filterType, setFilterType] = useState<FilterType>('all')
   const [filterModule, setFilterModule] = useState('all')
   const [search, setSearch] = useState('')
 
-  const isLoading = loadingAgents || loadingSkills || loadingWorkflows
+  const isLoading = loadingAgents || loadingSkills || loadingWorkflows || loadingTeams
 
   const allItems = useMemo<ToolkitItem[]>(() => {
     const items: ToolkitItem[] = []
@@ -70,8 +72,19 @@ export function ToolkitPage() {
         invoke: w.id,
       })
     }
+    for (const t of teams ?? []) {
+      items.push({
+        kind: 'team',
+        id: t.id,
+        name: t.name,
+        icon: t.icon,
+        description: t.description,
+        module: t.module,
+        invoke: t.name,
+      })
+    }
     return items
-  }, [agents, skills, workflows])
+  }, [agents, skills, workflows, teams])
 
   const modules = useMemo(() => {
     const set = new Set<string>()
@@ -97,18 +110,38 @@ export function ToolkitPage() {
     })
   }, [allItems, filterType, filterModule, search])
 
+  // Compute counts from items filtered by module and search (but NOT by type tab),
+  // so tab counts reflect how many items are available within the current module/search scope
+  const moduleAndSearchFiltered = useMemo(() => {
+    const q = search.toLowerCase()
+    return allItems.filter((item) => {
+      if (filterModule !== 'all' && item.module !== filterModule) return false
+      if (q) {
+        return (
+          item.name.toLowerCase().includes(q) ||
+          (item.title ?? '').toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q)
+        )
+      }
+      return true
+    })
+  }, [allItems, filterModule, search])
+
   const counts = useMemo(() => ({
-    all: allItems.length,
-    agent: allItems.filter((i) => i.kind === 'agent').length,
-    skill: allItems.filter((i) => i.kind === 'skill').length,
-    workflow: allItems.filter((i) => i.kind === 'workflow').length,
-  }), [allItems])
+    all: moduleAndSearchFiltered.length,
+    agent: moduleAndSearchFiltered.filter((i) => i.kind === 'agent').length,
+    skill: moduleAndSearchFiltered.filter((i) => i.kind === 'skill').length,
+    workflow: moduleAndSearchFiltered.filter((i) => i.kind === 'workflow').length,
+    team: moduleAndSearchFiltered.filter((i) => i.kind === 'team').length,
+  }), [moduleAndSearchFiltered])
 
   function handleItemClick(item: ToolkitItem) {
     if (item.kind === 'agent') {
       navigate(`/agents/${item.id}`)
     } else if (item.kind === 'skill') {
       setSelectedSkillId(item.id)
+    } else if (item.kind === 'team') {
+      navigate(`/teams/${item.id}`)
     } else {
       setSelectedWorkflowId(item.id)
     }
@@ -118,6 +151,7 @@ export function ToolkitPage() {
     agent: { label: 'Agent', colorClass: 'text-[var(--color-accent)] bg-blue-500/10', Icon: Users },
     skill: { label: 'Skill', colorClass: 'text-[var(--color-success)] bg-green-500/10', Icon: Zap },
     workflow: { label: 'Workflow', colorClass: 'text-purple-400 bg-purple-500/10', Icon: GitBranch },
+    team: { label: 'Team', colorClass: 'text-amber-400 bg-amber-500/10', Icon: UsersRound },
   }
 
   return (
@@ -146,7 +180,7 @@ export function ToolkitPage() {
 
         {/* Type tabs */}
         <div className="flex gap-1 bg-[var(--color-surface-raised)] rounded-md p-0.5">
-          {(['all', 'agent', 'skill', 'workflow'] as const).map((t) => (
+          {(['all', 'agent', 'skill', 'workflow', 'team'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setFilterType(t)}
@@ -159,7 +193,8 @@ export function ToolkitPage() {
               {t === 'all' ? `All (${counts.all})` :
                t === 'agent' ? `Agents (${counts.agent})` :
                t === 'skill' ? `Skills (${counts.skill})` :
-               `Workflows (${counts.workflow})`}
+               t === 'workflow' ? `Workflows (${counts.workflow})` :
+               `Teams (${counts.team})`}
             </button>
           ))}
         </div>

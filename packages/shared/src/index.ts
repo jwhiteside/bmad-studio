@@ -9,6 +9,7 @@ export type {
   WorkflowStep,
   WorkflowListItem,
 } from './workflows.js'
+export { WORKFLOW_TYPE_DEFINITIONS } from './workflows.js'
 export type {
   ConnectionStatus,
   DataSourceType,
