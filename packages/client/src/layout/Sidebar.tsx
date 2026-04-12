@@ -29,58 +29,66 @@ import { useAppTitle } from '../hooks/use-app-title.js'
 
 type ProjectEntry = { path: string; name: string; lastOpened: string }
 
-const navItems: Array<{
-  to: string
-  label: string
-  icon: typeof Users
-  badgeKey?: string
-}> = [
+type NavItem = { to: string; label: string; icon: typeof Users; badgeKey?: string }
+type NavGroup = { label: string; icon: typeof Users; items: NavItem[] }
+
+const topItems: NavItem[] = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/outputs', label: 'Outputs', icon: FileOutput },
-  { to: '/agents', label: 'Agents', icon: Users, badgeKey: 'agents' },
-  { to: '/teams', label: 'Teams', icon: UsersRound, badgeKey: 'teams' },
-  { to: '/skills', label: 'Skills', icon: Zap, badgeKey: 'skills' },
-  { to: '/workflows', label: 'Workflows', icon: GitBranch, badgeKey: 'workflows' },
-  { to: '/toolkit', label: 'Toolkit', icon: Layers },
-  { to: '/connections', label: 'IDE Connections', icon: Plug, badgeKey: 'connections' },
-  { to: '/modules', label: 'Modules', icon: Package, badgeKey: 'modules' },
 ]
 
-const utilityItems: Array<{
-  to: string
-  label: string
-  icon: typeof Users
-  badgeKey?: string
-}> = [
-  { to: '/commands', label: 'Agent Triggers', icon: BookOpen },
-  { to: '/files', label: 'Files', icon: FolderTree },
-  { to: '/settings', label: 'Settings', icon: Settings },
+const toolkitGroup: NavGroup = {
+  label: 'Toolkit',
+  icon: Layers,
+  items: [
+    { to: '/agents', label: 'Agents', icon: Users, badgeKey: 'agents' },
+    { to: '/commands', label: 'Agent Triggers', icon: BookOpen },
+    { to: '/teams', label: 'Teams', icon: UsersRound, badgeKey: 'teams' },
+    { to: '/skills', label: 'Skills', icon: Zap, badgeKey: 'skills' },
+    { to: '/workflows', label: 'Workflows', icon: GitBranch, badgeKey: 'workflows' },
+  ],
+}
+
+const settingsGroup: NavGroup = {
+  label: 'Settings',
+  icon: Settings,
+  items: [
+    { to: '/modules', label: 'Modules', icon: Package, badgeKey: 'modules' },
+    { to: '/connections', label: 'IDE Connections', icon: Plug, badgeKey: 'connections' },
+    { to: '/settings', label: 'Preferences', icon: Settings },
+  ],
+}
+
+const bottomItems: NavItem[] = [
+  { to: '/files', label: 'All Files', icon: FolderTree },
 ]
 
-function NavItem({
+function NavItemComponent({
   to,
   label,
   icon: Icon,
   badge,
+  indent = false,
 }: {
   to: string
   label: string
   icon: typeof Users
   badge?: number
+  indent?: boolean
 }) {
   return (
     <NavLink
       to={to}
       end={to === '/'}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-md text-sm transition-colors ${
+        `flex items-center gap-3 ${indent ? 'pl-8 pr-3' : 'px-3'} py-2 min-h-[36px] rounded-md text-sm transition-colors ${
           isActive
             ? 'text-[var(--color-accent)] font-bold bg-[var(--color-surface-raised)]'
             : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-raised)]'
         }`
       }
     >
-      <Icon size={18} />
+      <Icon size={indent ? 15 : 18} />
       <span className="flex-1">{label}</span>
       {badge !== undefined && badge > 0 && (
         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
@@ -88,6 +96,44 @@ function NavItem({
         </span>
       )}
     </NavLink>
+  )
+}
+
+function NavGroupComponent({
+  group,
+  badgeCounts,
+}: {
+  group: NavGroup
+  badgeCounts: Record<string, number>
+}) {
+  const [expanded, setExpanded] = useState(true)
+  const Icon = group.icon
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 px-3 py-2 min-h-[36px] rounded-md text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
+      >
+        <Icon size={16} />
+        <span className="flex-1 text-left">{group.label}</span>
+        <ChevronDown size={12} className={`transition-transform ${expanded ? '' : '-rotate-90'}`} />
+      </button>
+      {expanded && (
+        <div className="space-y-0.5">
+          {group.items.map((item) => (
+            <NavItemComponent
+              key={item.to}
+              to={item.to}
+              label={item.label}
+              icon={item.icon}
+              badge={item.badgeKey ? badgeCounts[item.badgeKey] : undefined}
+              indent
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -234,9 +280,9 @@ export function Sidebar() {
         )}
       </div>
 
-      <nav className="flex-1 px-2 space-y-1 overflow-y-auto" aria-label="Main navigation">
-        {navItems.map((item) => (
-          <NavItem
+      <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto pt-1" aria-label="Main navigation">
+        {topItems.map((item) => (
+          <NavItemComponent
             key={item.to}
             to={item.to}
             label={item.label}
@@ -245,10 +291,15 @@ export function Sidebar() {
           />
         ))}
 
-        <div className="my-3 border-t border-[var(--color-border-subtle)]" />
+        <div className="my-2 border-t border-[var(--color-border-subtle)]" />
+        <NavGroupComponent group={toolkitGroup} badgeCounts={badgeCounts} />
 
-        {utilityItems.map((item) => (
-          <NavItem key={item.to} {...item} />
+        <div className="my-2 border-t border-[var(--color-border-subtle)]" />
+        <NavGroupComponent group={settingsGroup} badgeCounts={badgeCounts} />
+
+        <div className="my-2 border-t border-[var(--color-border-subtle)]" />
+        {bottomItems.map((item) => (
+          <NavItemComponent key={item.to} {...item} />
         ))}
       </nav>
 

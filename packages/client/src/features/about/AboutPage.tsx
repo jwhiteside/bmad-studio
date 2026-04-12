@@ -1,6 +1,6 @@
 import { ExternalLink, Github, Heart, BookOpen, Scale } from 'lucide-react'
 
-const VERSION = '0.1.0'
+const VERSION = '1.0.0'
 
 function LinkCard({ href, icon: Icon, title, description }: { href: string; icon: typeof Github; title: string; description: string }) {
   return (
@@ -68,14 +68,15 @@ export function AboutPage() {
       {/* Description */}
       <div className="mb-8">
         <p className="text-sm leading-relaxed">
-          BMAD Studio is a browser-based admin interface for the BMAD agentic engineering framework.
-          It helps you visualize, configure, and manage your BMAD project — agents, skills, workflows,
-          teams, and modules — all through an intuitive web UI.
+          BMAD Studio is the visual administration layer for the BMAD ecosystem.
+          It gives you a dashboard for your project's AI agents, skills, workflows, teams, and outputs —
+          letting you browse, configure, and manage everything through a browser UI while your IDE
+          handles execution.
         </p>
         <p className="text-sm leading-relaxed mt-3 text-[var(--color-muted)]">
-          Studio is the configuration and visibility layer. It reads and writes BMAD's existing
-          markdown and YAML files directly, with no database and no hidden state. The IDE remains
-          the execution environment.
+          Studio reads and writes BMAD's existing text files directly — no database, no hidden state.
+          Install modules from the registry to extend your toolkit, switch between projects instantly,
+          and track sprint progress from the home dashboard.
         </p>
       </div>
 
@@ -127,7 +128,7 @@ export function AboutPage() {
       <div className="mb-8">
         <h2 className="text-sm font-bold mb-3">Built With</h2>
         <div className="flex flex-wrap gap-2">
-          {['React 19', 'Fastify 5', 'TypeScript', 'Tailwind CSS 4', 'Vite 6', 'CodeMirror 6', 'React Flow'].map((tech) => (
+          {['React 18', 'Fastify 5', 'TypeScript', 'Tailwind CSS', 'Vite', 'CodeMirror 6', 'shadcn/ui'].map((tech) => (
             <span key={tech} className="text-xs px-2.5 py-1 rounded-full bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] text-[var(--color-muted)]">
               {tech}
             </span>

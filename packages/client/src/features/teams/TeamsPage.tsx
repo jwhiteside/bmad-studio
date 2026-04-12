@@ -170,7 +170,7 @@ export function TeamsPage() {
             className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
           >
             <Plus size={14} />
-            Create Team
+            New Team
           </button>
         }
       />
