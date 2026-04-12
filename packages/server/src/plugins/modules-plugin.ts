@@ -209,7 +209,33 @@ export async function modulesPlugin(app: FastifyInstance) {
     const existingDir = path.join(bmadDir, parsed.data.code)
     const willReplace = fs.existsSync(existingDir)
 
-    return { ok: true, moduleYaml: parsed.data, counts, willReplace }
+    // Entity collision detection: compare incoming names against existing index
+    type Collision = { type: 'agent' | 'skill' | 'workflow'; name: string; existingModule: string }
+    const collisions: Collision[] = []
+    const incomingModuleCode = parsed.data.code
+    const index = app.fileStore.getIndex()
+
+    // Incoming agent names (from agents/*.md filenames)
+    const agentFiles = scanEntities(path.join(stagedRoot, 'agents'), '.md')
+    for (const agentFile of agentFiles) {
+      const name = path.basename(agentFile, path.extname(agentFile)).replace(/\.agent$/, '')
+      const existing = index.agents.find((a) => (a.name === name || a.id === name) && a.module && a.module !== incomingModuleCode)
+      if (existing) collisions.push({ type: 'agent', name, existingModule: existing.module! })
+    }
+
+    // Incoming skill names (from skills dir)
+    const skillsDir = path.join(stagedRoot, 'skills')
+    if (fs.existsSync(skillsDir)) {
+      const skillNames = fs.readdirSync(skillsDir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() || (e.isFile() && e.name.endsWith('.md')))
+        .map((e) => e.isDirectory() ? e.name : path.basename(e.name, '.md'))
+      for (const name of skillNames) {
+        const existing = index.skills.find((s) => s.id === name && s.module && s.module !== incomingModuleCode)
+        if (existing) collisions.push({ type: 'skill', name, existingModule: existing.module! })
+      }
+    }
+
+    return { ok: true, moduleYaml: parsed.data, counts, willReplace, collisions }
   })
 
   // Polymorphic install endpoint — accepts npm | local | github source types via

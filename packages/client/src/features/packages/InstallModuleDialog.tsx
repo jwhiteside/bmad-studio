@@ -5,11 +5,14 @@ import type { ModuleYaml } from '@bmad-studio/shared'
 
 type Tab = 'npm' | 'github' | 'local' | 'zip'
 
+type Collision = { type: 'agent' | 'skill' | 'workflow'; name: string; existingModule: string }
+
 type PreviewResponse = {
   ok: true
   moduleYaml: ModuleYaml
   counts: { agents: number; workflows: number; tasks: number }
   willReplace: boolean
+  collisions?: Collision[]
 }
 
 type InstallModuleDialogProps = {
@@ -332,6 +335,32 @@ export function InstallModuleDialog({ onClose, onInstalled, initialSource }: Ins
                 {preview.moduleYaml.version ? ` v${preview.moduleYaml.version}` : ''}. The previous
                 version will be recoverable from snapshot history.
               </p>
+            </div>
+          )}
+
+          {/* Entity collision warning */}
+          {preview?.collisions && preview.collisions.length > 0 && (
+            <div className="rounded-lg bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30 overflow-hidden">
+              <div className="flex items-start gap-2 p-3">
+                <AlertTriangle size={16} className="text-[var(--color-warning)] mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-[var(--color-warning)]">Entity name collisions detected</p>
+                  <p className="text-xs text-[var(--color-warning)] mt-0.5">
+                    {preview.collisions.length} {preview.collisions.length === 1 ? 'entity' : 'entities'} in this module share names with existing entities from other modules. Installing will not remove the existing entities — both will coexist.
+                  </p>
+                </div>
+              </div>
+              <div className="border-t border-[var(--color-warning)]/20 divide-y divide-[var(--color-warning)]/10">
+                {preview.collisions.map((c, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] uppercase font-bold text-[var(--color-warning)]/70 w-12 shrink-0">{c.type}</span>
+                      <code className="text-xs font-[var(--font-mono)] text-[var(--color-text)]">{c.name}</code>
+                    </div>
+                    <span className="text-[11px] text-[var(--color-muted)]">also in <strong>{c.existingModule}</strong></span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

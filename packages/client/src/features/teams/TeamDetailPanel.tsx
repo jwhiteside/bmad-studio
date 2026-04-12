@@ -18,6 +18,7 @@ import type { AgentListItem } from '@bmad-studio/shared'
 import { useTeamDetail, useTeamParty } from './use-teams.js'
 import { CsvViewer } from '../../shared/CsvViewer.js'
 import { useNotifications } from '../../layout/NotificationProvider.js'
+import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
 
 type TeamDetailPanelProps = {
   teamId: string
@@ -283,6 +284,7 @@ export function TeamDetailPanel({ teamId, onClose, onTeamUpdated }: TeamDetailPa
           <div className="flex items-center gap-2 shrink-0 ml-2">
             {team && !editing && (
               <>
+                <CopyLinkButton />
                 <button
                   onClick={() => setEditing(true)}
                   className="text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors"

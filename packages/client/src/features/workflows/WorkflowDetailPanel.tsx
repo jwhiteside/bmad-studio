@@ -2,6 +2,8 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { X, GitBranch, Users, FileOutput, FileInput, FileText, FolderOpen, Layers, ChevronDown, ChevronRight, Pencil, ArrowRight, BookMarked } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
+
 import type { WorkflowStep } from '@bmad-studio/shared'
 
 import { useWorkflowDetail } from './use-workflows.js'
@@ -245,6 +247,7 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
           {workflow && <WorkflowTypeBadge type={workflow.type} />}
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-2">
+          <CopyLinkButton />
           {workflow && (
             <button
               onClick={() => setShowEdit(true)}
@@ -288,6 +291,11 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
               <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] text-[var(--color-muted)]">
                 {workflow.phase}
               </span>
+            )}
+            {workflow.module && (
+              <code className="text-[10px] font-[var(--font-mono)] text-[var(--color-muted)]" title="Namespaced identity">
+                {workflow.module}/{workflow.id}
+              </code>
             )}
           </div>
 

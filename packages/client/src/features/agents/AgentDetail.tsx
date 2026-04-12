@@ -11,6 +11,7 @@ import { SkillAssignmentPanel } from './SkillAssignmentPanel.js'
 import { EditAgentDialog } from './EditAgentDialog.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
 import { useNotifications } from '../../layout/NotificationProvider.js'
+import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
 
 export function AgentDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -105,6 +106,7 @@ export function AgentDetailPage() {
         </div>
         <p className="text-[var(--color-muted)] text-sm mb-4">{agent.role}</p>
         <div className="flex items-center gap-3">
+          <CopyLinkButton title="Copy link to this agent" />
           <button
             onClick={() => setShowEdit(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"

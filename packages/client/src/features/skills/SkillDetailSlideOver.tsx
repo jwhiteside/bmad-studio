@@ -5,6 +5,7 @@ import { useSkillDetail } from './use-skills.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
 import { SlideOver } from '../../shared/SlideOver.js'
 import { FilepathLink } from '../../shared/FilepathLink.js'
+import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
 
 type SkillDetailSlideOverProps = {
   skillId: string
@@ -114,7 +115,7 @@ export function SkillDetailSlideOver({ skillId, onClose }: SkillDetailSlideOverP
   }, [skillContent])
 
   return (
-    <SlideOver open title={skill?.name ?? 'Loading...'} onClose={onClose}>
+    <SlideOver open title={skill?.name ?? 'Loading...'} onClose={onClose} actions={<CopyLinkButton />}>
       {isLoading && (
         <div className="space-y-3">
           <div className="h-4 w-3/4 rounded bg-[var(--color-surface-raised)] animate-pulse" />
