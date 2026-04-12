@@ -140,21 +140,9 @@ export function CreateTeamDialog({ onClose, onCreated }: CreateTeamDialogProps) 
             </div>
           </div>
 
-          {/* Description */}
+          {/* Parent Module — above the fold per UX-DR4 */}
           <div>
-            <label className="block text-sm font-bold mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What does this team do?"
-              rows={3}
-              className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
-            />
-          </div>
-
-          {/* Module */}
-          <div>
-            <label className="block text-sm font-bold mb-1">Module</label>
+            <label className="block text-xs font-bold mb-1">Parent Module</label>
             <select
               value={moduleName}
               onChange={(e) => setModuleName(e.target.value)}
@@ -167,6 +155,18 @@ export function CreateTeamDialog({ onClose, onCreated }: CreateTeamDialogProps) 
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-bold mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What does this team do?"
+              rows={3}
+              className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
+            />
           </div>
 
           {/* Agent selection */}

@@ -316,7 +316,7 @@ export function CreateWorkflowDialog({ onClose, onCreated }: CreateWorkflowDialo
             <>
               {/* Name */}
               <div>
-                <label className="block text-sm font-bold mb-1">Name</label>
+                <label className="block text-xs font-bold mb-1">Name</label>
                 <input
                   type="text"
                   value={name}
@@ -330,9 +330,24 @@ export function CreateWorkflowDialog({ onClose, onCreated }: CreateWorkflowDialo
                 )}
               </div>
 
+              {/* Parent Module — above the fold per UX-DR4 */}
+              <div>
+                <label className="block text-xs font-bold mb-1">Parent Module</label>
+                <select
+                  value={moduleName}
+                  onChange={(e) => setModuleName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none"
+                >
+                  <option value="">Select a module...</option>
+                  {modules.map((m) => (
+                    <option key={m.name} value={m.name}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Description */}
               <div>
-                <label className="block text-sm font-bold mb-1">Description</label>
+                <label className="block text-xs font-bold mb-1">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -344,7 +359,7 @@ export function CreateWorkflowDialog({ onClose, onCreated }: CreateWorkflowDialo
 
               {/* Phase */}
               <div>
-                <label className="block text-sm font-bold mb-1">Phase (optional)</label>
+                <label className="block text-xs font-bold mb-1">Phase (optional)</label>
                 <select
                   value={phase}
                   onChange={(e) => setPhase(e.target.value)}
@@ -365,21 +380,6 @@ export function CreateWorkflowDialog({ onClose, onCreated }: CreateWorkflowDialo
                     className="w-full mt-2 px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none"
                   />
                 )}
-              </div>
-
-              {/* Module */}
-              <div>
-                <label className="block text-sm font-bold mb-1">Module</label>
-                <select
-                  value={moduleName}
-                  onChange={(e) => setModuleName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none"
-                >
-                  <option value="">Select a module...</option>
-                  {modules.map((m) => (
-                    <option key={m.name} value={m.name}>{m.name}</option>
-                  ))}
-                </select>
               </div>
 
               {/* Steps (step-based only) */}

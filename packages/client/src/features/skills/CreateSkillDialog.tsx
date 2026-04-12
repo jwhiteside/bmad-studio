@@ -250,7 +250,7 @@ export function CreateSkillDialog({ onClose, onCreated }: CreateSkillDialogProps
             <>
               {/* Name */}
               <div>
-                <label className="block text-sm font-bold mb-1">Name</label>
+                <label className="block text-xs font-bold mb-1">Name</label>
                 <input
                   type="text"
                   value={name}
@@ -266,33 +266,9 @@ export function CreateSkillDialog({ onClose, onCreated }: CreateSkillDialogProps
                 )}
               </div>
 
-              {/* Description */}
+              {/* Parent Module — above the fold per UX-DR4 */}
               <div>
-                <label className="block text-sm font-bold mb-1">Description</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What does this skill enable?"
-                  rows={2}
-                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
-                />
-              </div>
-
-              {/* Best for */}
-              <div>
-                <label className="block text-sm font-bold mb-1">Best for (optional)</label>
-                <input
-                  type="text"
-                  value={bestForInput}
-                  onChange={(e) => setBestForInput(e.target.value)}
-                  placeholder="e.g. pm, analyst, architect (comma-separated)"
-                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none"
-                />
-              </div>
-
-              {/* Module */}
-              <div>
-                <label className="block text-sm font-bold mb-1">Module</label>
+                <label className="block text-xs font-bold mb-1">Parent Module</label>
                 <select
                   value={moduleName}
                   onChange={(e) => setModuleName(e.target.value)}
@@ -305,6 +281,30 @@ export function CreateSkillDialog({ onClose, onCreated }: CreateSkillDialogProps
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-bold mb-1">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What does this skill enable?"
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
+                />
+              </div>
+
+              {/* Best for */}
+              <div>
+                <label className="block text-xs font-bold mb-1">Best for (optional)</label>
+                <input
+                  type="text"
+                  value={bestForInput}
+                  onChange={(e) => setBestForInput(e.target.value)}
+                  placeholder="e.g. pm, analyst, architect (comma-separated)"
+                  className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] focus:border-[var(--color-accent)] focus:outline-none"
+                />
               </div>
 
               {/* Skill content editor */}
