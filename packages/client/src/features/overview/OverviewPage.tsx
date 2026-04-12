@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GitBranch, Zap, Plug, Package, Rocket, Users, ArrowRight, CheckCircle2, FileText, Brain, Wrench, AlertTriangle, ShieldCheck, BarChart3, ChevronDown } from 'lucide-react'
+import { GitBranch, Zap, Plug, Package, Rocket, Users, ArrowRight, CheckCircle2, FileText, Wrench, AlertTriangle, ShieldCheck, BarChart3, ChevronDown, RefreshCw, SkipForward } from 'lucide-react'
 
 import { EmptyState } from '../../shared/EmptyState.js'
 import { WorkflowTypeBadge } from '../workflows/WorkflowsPage.js'
@@ -26,8 +26,6 @@ function formatRelativeDate(input: string): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-type OutputCategory = 'brainstorming' | 'planning' | 'implementation' | 'other'
-
 type EpicDetail = {
   id: string
   status: string
@@ -44,15 +42,8 @@ type ProjectHealth = {
     reviewStories: string[]
     epicDetails?: EpicDetail[]
   } | null
-  recentOutputs: Array<{ category: OutputCategory; name: string; path: string; modifiedAt: string }>
+  recentOutputs: Array<{ category: string; name: string; path: string; modifiedAt: string }>
   outputCounts: { brainstorming: number; planning: number; implementation: number; other: number; total: number }
-}
-
-const CATEGORY_META: Record<OutputCategory, { label: string; icon: typeof Brain }> = {
-  brainstorming: { label: 'Brainstorming', icon: Brain },
-  planning: { label: 'Planning', icon: FileText },
-  implementation: { label: 'Implementation', icon: Wrench },
-  other: { label: 'Other', icon: FileText },
 }
 
 function humaniseStoryId(id: string): string {
@@ -192,29 +183,32 @@ function ProjectStatusPanel({ health }: { health: ProjectHealth }) {
           {outputCounts.total > 0 ? (
             <div className="space-y-3">
               <div className="flex gap-3 flex-wrap">
-                {(['brainstorming', 'planning', 'implementation'] as OutputCategory[])
-                  .filter((c) => outputCounts[c] > 0)
-                  .map((cat) => {
-                    const { label, icon: Icon } = CATEGORY_META[cat]
-                    return (
-                      <Link
-                        key={cat}
-                        to={`/outputs?category=${cat}`}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] transition-colors text-xs"
-                      >
-                        <Icon size={12} className="text-[var(--color-accent)] shrink-0" />
-                        <span className="font-bold">{label}</span>
-                        <span className="text-[var(--color-muted)]">{outputCounts[cat]}</span>
-                      </Link>
-                    )
-                  })}
+                {outputCounts.brainstorming + outputCounts.planning > 0 && (
+                  <Link
+                    to="/outputs"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] transition-colors text-xs"
+                  >
+                    <FileText size={12} className="text-[var(--color-accent)] shrink-0" />
+                    <span className="font-bold">Project</span>
+                    <span className="text-[var(--color-muted)]">{outputCounts.brainstorming + outputCounts.planning}</span>
+                  </Link>
+                )}
+                {outputCounts.implementation > 0 && (
+                  <Link
+                    to="/outputs"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] transition-colors text-xs"
+                  >
+                    <Wrench size={12} className="text-[var(--color-accent)] shrink-0" />
+                    <span className="font-bold">Executional</span>
+                    <span className="text-[var(--color-muted)]">{outputCounts.implementation}</span>
+                  </Link>
+                )}
               </div>
               {recentOutputs.length > 0 && (
                 <div>
                   <p className="text-xs font-bold text-[var(--color-muted)] mb-2">Recent</p>
                   <div className="space-y-1.5">
                     {recentOutputs.slice(0, 4).map((f) => {
-                      const { icon: Icon } = CATEGORY_META[f.category]
                       const friendlyDate = formatRelativeDate(f.modifiedAt)
                       return (
                         <Link
@@ -222,7 +216,7 @@ function ProjectStatusPanel({ health }: { health: ProjectHealth }) {
                           to={`/outputs?path=${encodeURIComponent(f.path)}`}
                           className="flex items-center gap-2 text-xs hover:text-[var(--color-accent)] transition-colors group"
                         >
-                          <Icon size={11} className="text-[var(--color-muted)] shrink-0 group-hover:text-[var(--color-accent)]" />
+                          <FileText size={11} className="text-[var(--color-muted)] shrink-0 group-hover:text-[var(--color-accent)]" />
                           <span className="truncate text-[var(--color-text)] group-hover:text-[var(--color-accent)]">{f.name.replace(/\.(md|yaml|yml)$/, '')}</span>
                           <span className="text-[var(--color-muted)] shrink-0 ml-auto">{friendlyDate}</span>
                         </Link>
@@ -262,26 +256,68 @@ function phaseLabel(phase: string): string {
   return stripped.charAt(0).toUpperCase() + stripped.slice(1)
 }
 
+const QUICK_FLOW_CODES = new Set(['QS', 'QD', 'QQ'])
+const BUILD_CYCLE_CODES = ['SP', 'CS', 'DS', 'CR', 'ER']
+
+function CommandPill({ cmd, variant = 'default' }: { cmd: CommandItem; variant?: 'default' | 'required' | 'dim' | 'cycle' }) {
+  const styles = {
+    required: 'border-[var(--color-accent)] bg-[var(--color-accent)]/5',
+    cycle: 'border-[var(--color-accent)]/40 bg-[var(--color-accent)]/5',
+    default: 'border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]',
+    dim: 'border-[var(--color-border-subtle)]/50 bg-[var(--color-surface-raised)]/50 opacity-60',
+  }
+  const resolvedVariant = variant === 'default' && cmd.required ? 'required' : variant
+  return (
+    <div
+      title={`${cmd.name}\n${cmd.description}`}
+      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs border transition-colors ${styles[resolvedVariant]}`}
+    >
+      {cmd.agentTitle && (
+        <span className="text-xs leading-none" role="img">
+          {cmd.agentTitle.match(/\p{Emoji_Presentation}/u)?.[0] ?? ''}
+        </span>
+      )}
+      <span className="font-[var(--font-mono)] font-bold">{cmd.code}</span>
+      <span className="text-[var(--color-muted)] hidden sm:inline truncate max-w-[80px]">{cmd.name}</span>
+    </div>
+  )
+}
+
 function PhaseTimeline({ commands }: { commands: CommandItem[] }) {
   const navigate = useNavigate()
 
-  const phaseGroups = useMemo(() => {
+  const { phaseGroups, quickFlowCmds, anytimeCmds, buildCycleCmds, implSupportCmds } = useMemo(() => {
     const groups = new Map<string, CommandItem[]>()
+    const quick: CommandItem[] = []
+    const anytime: CommandItem[] = []
+
     for (const cmd of commands) {
+      if (QUICK_FLOW_CODES.has(cmd.code)) {
+        quick.push(cmd)
+        continue
+      }
       const key = cmd.phase || 'anytime'
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(cmd)
+      if (key === 'anytime') {
+        anytime.push(cmd)
+      } else {
+        if (!groups.has(key)) groups.set(key, [])
+        groups.get(key)!.push(cmd)
+      }
     }
     for (const [, cmds] of groups) {
       cmds.sort((a, b) => (a.sequence ?? 999) - (b.sequence ?? 999))
     }
-    return groups
+
+    // Split implementation into Build Cycle + support
+    const implCmds = groups.get('4-implementation') ?? []
+    const cycleSet = new Set(BUILD_CYCLE_CODES)
+    const cycle = BUILD_CYCLE_CODES.map((code) => implCmds.find((c) => c.code === code)).filter(Boolean) as CommandItem[]
+    const support = implCmds.filter((c) => !cycleSet.has(c.code))
+
+    return { phaseGroups: groups, quickFlowCmds: quick, anytimeCmds: anytime, buildCycleCmds: cycle, implSupportCmds: support }
   }, [commands])
 
-  const mainPhases = PHASE_ORDER.filter((p) => phaseGroups.has(p))
-  const anytimeCommands = phaseGroups.get('anytime') ?? []
-
-  if (mainPhases.length === 0 && anytimeCommands.length === 0) return null
+  if (phaseGroups.size === 0 && anytimeCmds.length === 0) return null
 
   return (
     <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
@@ -298,39 +334,67 @@ function PhaseTimeline({ commands }: { commands: CommandItem[] }) {
         </button>
       </div>
 
-      {/* Horizontal phase timeline */}
+      {/* Horizontal phase timeline — all 4 phases always shown */}
       <div className="flex gap-0 overflow-x-auto pb-2">
-        {mainPhases.map((phase, idx) => {
+        {PHASE_ORDER.map((phase, idx) => {
           const cmds = phaseGroups.get(phase) ?? []
+          const isEmpty = cmds.length === 0
+          const isImpl = phase === '4-implementation'
+          // For implementation, show Build Cycle + support instead of flat list
+          const displayCmds = isImpl ? [] : cmds
+
           return (
             <div key={phase} className="flex items-start">
-              <div className="min-w-[180px] flex-1">
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-accent)] mb-3 px-1">
-                  {phaseLabel(phase)}
+              <div className={`min-w-[180px] flex-1 ${isEmpty ? 'opacity-40' : ''}`}>
+                <div className="flex items-center gap-1.5 mb-3 px-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-accent)]">
+                    {phaseLabel(phase)}
+                  </span>
+                  <span className="text-xs text-[var(--color-muted)]">({cmds.length})</span>
                 </div>
-                <div className="flex flex-wrap gap-1.5 px-1">
-                  {cmds.map((cmd) => (
-                    <div
-                      key={`${cmd.code}-${cmd.module}`}
-                      title={`${cmd.name}\n${cmd.description}`}
-                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs border transition-colors ${
-                        cmd.required
-                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5'
-                          : 'border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]'
-                      }`}
-                    >
-                      {cmd.agentTitle && (
-                        <span className="text-xs leading-none" role="img">
-                          {cmd.agentTitle.match(/\p{Emoji_Presentation}/u)?.[0] ?? ''}
-                        </span>
-                      )}
-                      <span className="font-[var(--font-mono)] font-bold">{cmd.code}</span>
-                      <span className="text-[var(--color-muted)] hidden sm:inline truncate max-w-[80px]">{cmd.name}</span>
-                    </div>
-                  ))}
-                </div>
+
+                {isImpl ? (
+                  <div className="px-1 space-y-2">
+                    {/* Build Cycle */}
+                    {buildCycleCmds.length > 0 && (
+                      <div className="rounded-md border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/[0.03] p-2">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <RefreshCw size={11} className="text-[var(--color-accent)]" />
+                          <span className="text-xs font-bold text-[var(--color-accent)]">Build Cycle</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {buildCycleCmds.map((cmd, ci) => (
+                            <span key={cmd.code} className="contents">
+                              <CommandPill cmd={cmd} variant="cycle" />
+                              {ci < buildCycleCmds.length - 1 && (
+                                <ArrowRight size={10} className="text-[var(--color-muted)] shrink-0" />
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Support commands */}
+                    {implSupportCmds.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {implSupportCmds.map((cmd) => (
+                          <CommandPill key={`${cmd.code}-${cmd.module}`} cmd={cmd} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5 px-1">
+                    {displayCmds.map((cmd) => (
+                      <CommandPill key={`${cmd.code}-${cmd.module}`} cmd={cmd} />
+                    ))}
+                    {isEmpty && (
+                      <span className="text-xs text-[var(--color-muted)] italic">No commands</span>
+                    )}
+                  </div>
+                )}
               </div>
-              {idx < mainPhases.length - 1 && (
+              {idx < PHASE_ORDER.length - 1 && (
                 <div className="flex items-center pt-8 px-2 text-[var(--color-muted)]">
                   <ArrowRight size={16} />
                 </div>
@@ -340,27 +404,33 @@ function PhaseTimeline({ commands }: { commands: CommandItem[] }) {
         })}
       </div>
 
+      {/* Quick Flow bypass lane */}
+      {quickFlowCmds.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-dashed border-[var(--color-border-subtle)]">
+          <div className="flex items-center gap-2 px-1">
+            <SkipForward size={14} className="text-[var(--color-accent)] shrink-0" />
+            <span className="text-xs font-bold text-[var(--color-accent)]">Quick Flow</span>
+            <span className="text-xs text-[var(--color-muted)]">Skip phases 1–3 for small changes</span>
+            <div className="flex-1 border-t border-dashed border-[var(--color-accent)]/30 mx-2" />
+            <ArrowRight size={12} className="text-[var(--color-accent)]/50 shrink-0" />
+          </div>
+          <div className="flex flex-wrap gap-1.5 px-1 mt-2 ml-6">
+            {quickFlowCmds.map((cmd) => (
+              <CommandPill key={`${cmd.code}-${cmd.module}`} cmd={cmd} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Anytime section */}
-      {anytimeCommands.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-[var(--color-border-subtle)]">
+      {anytimeCmds.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
           <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2 px-1">
-            Anytime
+            Anytime ({anytimeCmds.length})
           </div>
           <div className="flex flex-wrap gap-1.5 px-1">
-            {anytimeCommands.map((cmd) => (
-              <div
-                key={`${cmd.code}-${cmd.module}`}
-                title={`${cmd.name}\n${cmd.description}`}
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]"
-              >
-                {cmd.agentTitle && (
-                  <span className="text-xs leading-none" role="img">
-                    {cmd.agentTitle.match(/\p{Emoji_Presentation}/u)?.[0] ?? ''}
-                  </span>
-                )}
-                <span className="font-[var(--font-mono)] font-bold">{cmd.code}</span>
-                <span className="text-[var(--color-muted)] hidden sm:inline truncate max-w-[80px]">{cmd.name}</span>
-              </div>
+            {anytimeCmds.map((cmd) => (
+              <CommandPill key={`${cmd.code}-${cmd.module}`} cmd={cmd} />
             ))}
           </div>
         </div>
