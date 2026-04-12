@@ -41,7 +41,7 @@ const navItems: Array<{
   { to: '/skills', label: 'Skills', icon: Zap, badgeKey: 'skills' },
   { to: '/workflows', label: 'Workflows', icon: GitBranch, badgeKey: 'workflows' },
   { to: '/toolkit', label: 'Toolkit', icon: Layers },
-  { to: '/connections', label: 'Data Sources', icon: Plug, badgeKey: 'connections' },
+  { to: '/connections', label: 'IDE Connections', icon: Plug, badgeKey: 'connections' },
   { to: '/modules', label: 'Modules', icon: Package, badgeKey: 'modules' },
 ]
 
@@ -51,7 +51,7 @@ const utilityItems: Array<{
   icon: typeof Users
   badgeKey?: string
 }> = [
-  { to: '/commands', label: 'Commands', icon: BookOpen },
+  { to: '/commands', label: 'Agent Triggers', icon: BookOpen },
   { to: '/files', label: 'Files', icon: FolderTree },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]

@@ -557,7 +557,7 @@ export function ConnectionsPage() {
   if (loading && dsLoading) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Connections</h1>
+        <h1 className="text-2xl font-extrabold mb-8">IDE Connections</h1>
         <SkeletonCard count={3} />
       </div>
     )
@@ -570,25 +570,18 @@ export function ConnectionsPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-extrabold">
-          Connections ({totalCount})
+          IDE Connections ({totalCount})
         </h1>
         <div className="flex items-center gap-3">
           {ideData && ideData.available.length > 0 && (
             <button
               onClick={() => setShowAddIde(true)}
-              className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
             >
               <Monitor size={14} />
-              Add IDE
+              Add IDE Connection
             </button>
           )}
-          <button
-            onClick={() => setShowAddDs(true)}
-            className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            Add Data Source
-          </button>
         </div>
       </div>
 
@@ -706,17 +699,17 @@ export function ConnectionsPage() {
       {totalCount === 0 && (
         <EmptyState
           icon={Plug}
-          title="No connections configured"
-          description="Add data sources to sync external data, or configure IDE integrations in your BMAD project."
-          actions={
+          title="No IDE connections configured"
+          description="Configure IDE integrations to enable skill generation and project sync in your BMAD project."
+          actions={ideData && ideData.available.length > 0 ? (
             <button
-              onClick={() => setShowAddDs(true)}
+              onClick={() => setShowAddIde(true)}
               className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
             >
-              <Plus size={14} />
-              Add Data Source
+              <Monitor size={14} />
+              Add IDE Connection
             </button>
-          }
+          ) : undefined}
         />
       )}
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { FolderTree, File, Folder, Save, Loader2 } from 'lucide-react'
+import { FolderTree, File, Folder, Save, Loader2, FileText, FileCode, FileJson, Image, Table, ChevronDown, ChevronRight, FileType } from 'lucide-react'
 
 import type { FileNode } from '@bmad-studio/shared'
 
@@ -17,6 +17,19 @@ function getRelativePath(filePath: string): string {
 
 function isEditable(filePath: string): boolean {
   return /\.(md|yaml|yml)$/i.test(filePath)
+}
+
+function fileTypeIcon(name: string): typeof File {
+  const ext = name.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'md': return FileText
+    case 'yaml': case 'yml': return FileType
+    case 'json': return FileJson
+    case 'ts': case 'tsx': case 'js': case 'jsx': return FileCode
+    case 'png': case 'jpg': case 'jpeg': case 'svg': case 'gif': case 'webp': return Image
+    case 'csv': return Table
+    default: return File
+  }
 }
 
 function TreeNode({
@@ -50,17 +63,27 @@ function TreeNode({
     <div>
       <button
         onClick={handleClick}
-        className={`w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors ${
+        className={`w-full text-left flex items-center gap-1.5 px-2 py-1.5 text-sm rounded transition-colors ${
           isSelected
             ? 'bg-[var(--color-surface-raised)] text-[var(--color-accent)] font-bold'
             : 'hover:bg-[var(--color-surface-raised)]'
-        } ${node.type === 'directory' || node.type === 'file' ? 'cursor-pointer' : ''}`}
+        } cursor-pointer`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
         {node.type === 'directory' ? (
-          <Folder size={14} className={expanded ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'} />
+          <>
+            {expanded ? (
+              <ChevronDown size={12} className="text-[var(--color-muted)] shrink-0" />
+            ) : (
+              <ChevronRight size={12} className="text-[var(--color-muted)] shrink-0" />
+            )}
+            <Folder size={14} className={expanded ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'} />
+          </>
         ) : (
-          <File size={14} className={isSelected ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'} />
+          <>
+            <span className="w-3" />
+            {(() => { const Icon = fileTypeIcon(node.name); return <Icon size={14} className={isSelected ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'} /> })()}
+          </>
         )}
         <span className="truncate">{node.name}</span>
         {node.type === 'file' && node.size !== undefined && (

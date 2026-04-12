@@ -36,25 +36,48 @@ function rowToCommand(row: Record<string, string>): CommandItem {
   }
 }
 
+function loadCsvCommands(csvPath: string, fallbackModule: string, log: FastifyInstance['log']): CommandItem[] {
+  if (!fs.existsSync(csvPath)) return []
+  const content = fs.readFileSync(csvPath, 'utf-8')
+  const result = parseCsv(csvPath, content)
+  if (!result.ok) {
+    log.warn({ error: result.error, path: csvPath }, 'Failed to parse bmad-help.csv')
+    return []
+  }
+  return result.data.map((row) => {
+    const cmd = rowToCommand(row)
+    if (!cmd.module) cmd.module = fallbackModule
+    return cmd
+  })
+}
+
 export async function commandsPlugin(app: FastifyInstance) {
   app.get('/api/commands', async () => {
     if (!('fileStore' in app)) return []
 
     const projectRoot = app.fileStore.projectRoot
-    const csvPath = path.join(projectRoot, '_bmad', '_config', 'bmad-help.csv')
+    const bmadDir = path.join(projectRoot, '_bmad')
+    const commands: CommandItem[] = []
 
-    if (!fs.existsSync(csvPath)) {
-      return []
+    // Global bmad-help.csv
+    commands.push(...loadCsvCommands(path.join(bmadDir, '_config', 'bmad-help.csv'), '', app.log))
+
+    // Per-module bmad-help.csv (e.g. _bmad/dept-optimizely/_config/bmad-help.csv)
+    if (fs.existsSync(bmadDir)) {
+      for (const entry of fs.readdirSync(bmadDir, { withFileTypes: true })) {
+        if (!entry.isDirectory() || entry.name.startsWith('_') || entry.name.startsWith('.')) continue
+        const moduleCsv = path.join(bmadDir, entry.name, '_config', 'bmad-help.csv')
+        commands.push(...loadCsvCommands(moduleCsv, entry.name, app.log))
+      }
     }
 
-    const content = fs.readFileSync(csvPath, 'utf-8')
-    const result = parseCsv(csvPath, content)
-
-    if (!result.ok) {
-      app.log.warn({ error: result.error }, 'Failed to parse bmad-help.csv')
-      return []
-    }
-
-    return result.data.map(rowToCommand)
+    // Deduplicate by code+module (global CSV may already include module commands)
+    const seen = new Set<string>()
+    return commands.filter((cmd) => {
+      const key = `${cmd.code}::${cmd.module}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
   })
 }
