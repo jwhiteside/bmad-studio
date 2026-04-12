@@ -53,7 +53,27 @@ function parseSprintStatus(sprintStatusPath: string) {
       }
     }
 
-    return { lastUpdated, activeEpics, storyCounts, inProgressStories, reviewStories }
+    // Story 26.1: Build structured epic → story list
+    const allEpics = Object.entries(devStatus)
+      .filter(([k]) => /^epic-\d+$/.test(k))
+      .map(([k, v]) => {
+        const epicNum = k.replace('epic-', '')
+        const stories = Object.entries(devStatus)
+          .filter(([sk]) => sk.startsWith(`${epicNum}-`) && !sk.includes('retrospective'))
+          .map(([sk, sv]) => ({ id: sk, status: sv as string }))
+        return { id: k, status: v as string, storyCount: stories.length, stories }
+      })
+      // Show active first, then done (most recent first by number), skip backlog
+      .filter((e) => e.status !== 'backlog')
+      .sort((a, b) => {
+        if (a.status === 'in-progress' && b.status !== 'in-progress') return -1
+        if (b.status === 'in-progress' && a.status !== 'in-progress') return 1
+        const aNum = parseInt(a.id.replace('epic-', ''), 10)
+        const bNum = parseInt(b.id.replace('epic-', ''), 10)
+        return bNum - aNum
+      })
+
+    return { lastUpdated, activeEpics, storyCounts, inProgressStories, reviewStories, epicDetails: allEpics }
   } catch {
     return null
   }

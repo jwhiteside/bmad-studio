@@ -1,17 +1,41 @@
 import type { FastifyInstance } from 'fastify'
+import fs from 'node:fs'
+import path from 'node:path'
 
 export async function overviewPlugin(app: FastifyInstance) {
   app.get('/api/overview', async () => {
     const hasStore = 'fileStore' in app
 
     if (!hasStore) {
-      return { detected: false, sections: {} }
+      return { detected: false, sections: {}, projectHealth: { hasProjectContext: false } }
     }
 
     const index = app.fileStore.getIndex()
 
+    // Detect project-context.md (Story 26.8)
+    const projectContextPath = path.join(app.fileStore.projectRoot, '_bmad-output', 'project-context.md')
+    const hasProjectContext = fs.existsSync(projectContextPath)
+
+    // Toolkit summary stats (Story 26.3)
+    const assignedSkillIds = new Set<string>()
+    for (const agent of index.agents) {
+      for (const skillRef of agent.skills ?? []) {
+        assignedSkillIds.add(skillRef)
+      }
+    }
+    const toolkitStats = {
+      totalSkills: index.skills.length,
+      assignedSkills: assignedSkillIds.size,
+      unassignedSkills: index.skills.length - assignedSkillIds.size,
+      totalAgents: index.agents.filter((a) => a.name || a.title).length,
+      totalWorkflows: index.workflows.length,
+      totalTeams: index.teams.length,
+    }
+
     return {
       detected: true,
+      projectHealth: { hasProjectContext },
+      toolkitStats,
       sections: {
         teams: {
           teams: index.teams.map((t) => ({

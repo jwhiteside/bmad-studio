@@ -9,46 +9,73 @@ import { CsvViewer } from '../../shared/CsvViewer.js'
 import { useDetailParam } from '../../hooks/use-detail-param.js'
 
 type OutputFile = { path: string; name: string; type: string; size: number; modifiedAt: string }
-type OutputCategory = 'brainstorming' | 'planning' | 'implementation' | 'other'
 
-const CATEGORY_META: Record<OutputCategory, { label: string; description: string; icon: typeof Brain; color: string }> = {
-  brainstorming: {
-    label: 'Brainstorming',
-    description: 'Ideation sessions, gap analyses, and exploration documents',
-    icon: Brain,
-    color: 'text-purple-400',
-  },
-  planning: {
-    label: 'Planning',
-    description: 'PRDs, architecture docs, epics, tech specs, and readiness reports',
+// Story 26.7: Top-level output sections
+type OutputSection = 'project' | 'executional' | 'other'
+
+function classifySection(relPath: string): OutputSection {
+  if (relPath.startsWith('brainstorming/') || relPath.startsWith('planning-artifacts/')) return 'project'
+  if (relPath.startsWith('implementation-artifacts/')) return 'executional'
+  return 'other'
+}
+
+const SECTION_META: Record<OutputSection, { label: string; description: string; icon: typeof Brain }> = {
+  project: {
+    label: 'Project Outputs',
+    description: 'Planning artifacts — PRDs, architecture, epics, brainstorming, UX specs',
     icon: FileText,
-    color: 'text-blue-400',
   },
-  implementation: {
-    label: 'Implementation',
-    description: 'Story artifacts, sprint status, code reviews, and retrospectives',
+  executional: {
+    label: 'Executional Outputs',
+    description: 'Sprint deliverables — stories, code reviews, retrospectives, sprint status',
     icon: Wrench,
-    color: 'text-[var(--color-accent)]',
   },
   other: {
     label: 'Other',
-    description: 'Miscellaneous output files',
+    description: 'Project-level files and uncategorised outputs',
     icon: Layers,
-    color: 'text-[var(--color-muted)]',
   },
 }
 
-function categorise(relPath: string): OutputCategory {
-  if (relPath.startsWith('brainstorming/')) return 'brainstorming'
-  if (relPath.startsWith('planning-artifacts/')) return 'planning'
-  if (relPath.startsWith('implementation-artifacts/')) return 'implementation'
-  return 'other'
+// Story 26.6: Sub-type taxonomy from BMAD workflow-map.md output filenames
+type SubType = {
+  key: string
+  label: string
+  match: (name: string, path: string) => boolean
+}
+
+const SUB_TYPES: SubType[] = [
+  { key: 'brainstorming', label: 'Brainstorming', match: (n) => /^brainstorming/i.test(n) },
+  { key: 'product-brief', label: 'Product Brief', match: (n) => /^product.?brief/i.test(n) },
+  { key: 'prfaq', label: 'PRFAQ', match: (n) => /^prfaq/i.test(n) },
+  { key: 'research', label: 'Research', match: (n) => /research/i.test(n) },
+  { key: 'prd', label: 'Product Requirements', match: (n) => /^prd/i.test(n) },
+  { key: 'ux', label: 'UX Design', match: (n) => /^ux.?(spec|design)/i.test(n) },
+  { key: 'architecture', label: 'Architecture', match: (n) => /^architecture/i.test(n) },
+  { key: 'epics', label: 'Epics', match: (n) => /^epic/i.test(n) },
+  { key: 'tech-spec', label: 'Tech Specs', match: (n) => /^(tech.?spec|spec-)/i.test(n) },
+  { key: 'stories', label: 'Stories', match: (n) => /^story-/i.test(n) },
+  { key: 'sprint', label: 'Sprint Tracking', match: (n) => /^sprint/i.test(n) },
+  { key: 'reviews', label: 'Code Reviews', match: (n) => /review/i.test(n) },
+  { key: 'retros', label: 'Retrospectives', match: (n) => /retro/i.test(n) },
+  { key: 'spikes', label: 'Spikes', match: (n) => /^spike/i.test(n) },
+]
+
+function classifySubType(file: OutputFile): string {
+  for (const st of SUB_TYPES) {
+    if (st.match(file.name, file.path)) return st.key
+  }
+  return 'uncategorised'
+}
+
+function subTypeLabel(key: string): string {
+  return SUB_TYPES.find((st) => st.key === key)?.label ?? 'Uncategorised'
 }
 
 function cleanName(name: string): string {
   return name
     .replace(/\.(md|yaml|yml|txt)$/i, '')
-    .replace(/-(\d{4}-\d{2}-\d{2})(-\d{4})?$/, '') // strip trailing date from brainstorming sessions
+    .replace(/-(\d{4}-\d{2}-\d{2})(-\d{4})?$/, '')
     .replace(/-/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
@@ -114,7 +141,7 @@ function ArtifactCrossLinks({ refs }: { refs: FrontmatterRefs }) {
             <button
               key={l.route}
               onClick={() => navigate(l.route)}
-              className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] hover:bg-[var(--color-bg)] transition-colors ${l.color}`}
+              className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] hover:bg-[var(--color-bg)] transition-colors cursor-pointer ${l.color}`}
             >
               <IconComponent size={11} />
               {l.label}
@@ -134,45 +161,36 @@ function ArtifactCrossLinks({ refs }: { refs: FrontmatterRefs }) {
   )
 }
 
-function CategorySection({
-  category,
+// Story 26.6: Collapsible sub-type group within a section
+function SubTypeGroup({
+  subTypeKey,
   files,
   selectedPath,
   onSelect,
   defaultOpen,
 }: {
-  category: OutputCategory
+  subTypeKey: string
   files: OutputFile[]
   selectedPath: string | null
   onSelect: (path: string) => void
   defaultOpen: boolean
 }) {
   const [expanded, setExpanded] = useState(defaultOpen)
-  const { label, description, icon: Icon, color } = CATEGORY_META[category]
 
   return (
-    <div className="rounded-lg border border-[var(--color-border-subtle)] overflow-hidden">
+    <div className="border-l-2 border-[var(--color-border-subtle)] ml-2">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-[var(--color-surface-raised)] hover:bg-[var(--color-bg)] transition-colors text-left"
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[var(--color-surface-raised)] transition-colors cursor-pointer"
       >
         {expanded
-          ? <ChevronDown size={16} className="text-[var(--color-muted)] shrink-0" />
-          : <ChevronRight size={16} className="text-[var(--color-muted)] shrink-0" />}
-        <Icon size={16} className={`${color} shrink-0`} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm">{label}</span>
-            <span className="text-xs text-[var(--color-muted)]">({files.length})</span>
-          </div>
-          {!expanded && (
-            <p className="text-xs text-[var(--color-muted)] truncate">{description}</p>
-          )}
-        </div>
+          ? <ChevronDown size={12} className="text-[var(--color-muted)] shrink-0" />
+          : <ChevronRight size={12} className="text-[var(--color-muted)] shrink-0" />}
+        <span className="text-xs font-bold flex-1">{subTypeLabel(subTypeKey)}</span>
+        <span className="text-xs text-[var(--color-muted)]">{files.length}</span>
       </button>
-
       {expanded && (
-        <div className="divide-y divide-[var(--color-border-subtle)]">
+        <div className="ml-2">
           {files
             .slice()
             .sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime())
@@ -180,29 +198,20 @@ function CategorySection({
               const isSelected = selectedPath === f.path
               const date = new Date(f.modifiedAt)
               const dateStr = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-              const isYaml = /\.(yaml|yml)$/i.test(f.name)
 
               return (
                 <button
                   key={f.path}
                   onClick={() => onSelect(f.path)}
-                  className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
                     isSelected
-                      ? 'bg-[var(--color-surface-raised)] border-l-2 border-l-[var(--color-accent)]'
+                      ? 'bg-[var(--color-surface-raised)] border-l-2 border-l-[var(--color-accent)] -ml-[2px]'
                       : 'hover:bg-[var(--color-surface-raised)]'
-                  }`}
+                  } cursor-pointer`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Icon size={13} className={`${color} shrink-0`} />
-                    <div className="min-w-0">
-                      <p className={`text-sm truncate ${isSelected ? 'font-bold text-[var(--color-accent)]' : ''}`}>
-                        {cleanName(f.name)}
-                      </p>
-                      {isYaml && (
-                        <span className="text-[10px] text-[var(--color-muted)] font-[var(--font-mono)]">yaml</span>
-                      )}
-                    </div>
-                  </div>
+                  <p className={`text-sm truncate ${isSelected ? 'font-bold text-[var(--color-accent)]' : ''}`}>
+                    {cleanName(f.name)}
+                  </p>
                   <div className="flex items-center gap-3 shrink-0 ml-4">
                     <span className="text-xs text-[var(--color-muted)]">{dateStr}</span>
                     {f.size > 0 && (
@@ -220,6 +229,110 @@ function CategorySection({
   )
 }
 
+// Story 26.7: Top-level section (Project Outputs / Executional Outputs)
+function OutputSectionPanel({
+  section,
+  files,
+  selectedPath,
+  onSelect,
+  defaultOpen,
+}: {
+  section: OutputSection
+  files: OutputFile[]
+  selectedPath: string | null
+  onSelect: (path: string) => void
+  defaultOpen: boolean
+}) {
+  const [expanded, setExpanded] = useState(defaultOpen)
+  const { label, description, icon: Icon } = SECTION_META[section]
+
+  // Group files by sub-type
+  const subGroups = useMemo(() => {
+    const groups = new Map<string, OutputFile[]>()
+    for (const f of files) {
+      const st = classifySubType(f)
+      if (!groups.has(st)) groups.set(st, [])
+      groups.get(st)!.push(f)
+    }
+    // Sort sub-type groups: defined types first (by SUB_TYPES order), then uncategorised
+    const order = SUB_TYPES.map((st) => st.key)
+    return [...groups.entries()].sort((a, b) => {
+      const ai = order.indexOf(a[0])
+      const bi = order.indexOf(b[0])
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+    })
+  }, [files])
+
+  return (
+    <div className="rounded-lg border border-[var(--color-border-subtle)] overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 px-4 py-3 bg-[var(--color-surface-raised)] hover:bg-[var(--color-bg)] transition-colors text-left cursor-pointer"
+      >
+        {expanded
+          ? <ChevronDown size={16} className="text-[var(--color-muted)] shrink-0" />
+          : <ChevronRight size={16} className="text-[var(--color-muted)] shrink-0" />}
+        <Icon size={16} className="text-[var(--color-accent)] shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm">{label}</span>
+            <span className="text-xs text-[var(--color-muted)]">({files.length})</span>
+          </div>
+          {!expanded && (
+            <p className="text-xs text-[var(--color-muted)] truncate">{description}</p>
+          )}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="py-1">
+          {subGroups.length > 1 ? (
+            // Multiple sub-types: show collapsible groups
+            subGroups.map(([stKey, stFiles], idx) => (
+              <SubTypeGroup
+                key={stKey}
+                subTypeKey={stKey}
+                files={stFiles}
+                selectedPath={selectedPath}
+                onSelect={onSelect}
+                defaultOpen={idx === 0}
+              />
+            ))
+          ) : subGroups.length === 1 ? (
+            // Single sub-type: show files directly without extra nesting
+            <div className="px-1">
+              {subGroups[0][1]
+                .slice()
+                .sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime())
+                .map((f) => {
+                  const isSelected = selectedPath === f.path
+                  const date = new Date(f.modifiedAt)
+                  const dateStr = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                  return (
+                    <button
+                      key={f.path}
+                      onClick={() => onSelect(f.path)}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${
+                        isSelected
+                          ? 'bg-[var(--color-surface-raised)] border-l-2 border-l-[var(--color-accent)]'
+                          : 'hover:bg-[var(--color-surface-raised)]'
+                      } cursor-pointer`}
+                    >
+                      <p className={`text-sm truncate ${isSelected ? 'font-bold text-[var(--color-accent)]' : ''}`}>
+                        {cleanName(f.name)}
+                      </p>
+                      <span className="text-xs text-[var(--color-muted)] shrink-0 ml-4">{dateStr}</span>
+                    </button>
+                  )
+                })}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function OutputsPage() {
   const [outputs, setOutputs] = useState<OutputFile[]>([])
   const [loading, setLoading] = useState(true)
@@ -231,7 +344,7 @@ export function OutputsPage() {
 
   // ?category= param for jumping to a section from the Home page
   const [, setCategoryParam] = useDetailParam('category')
-  void setCategoryParam // used only as a hint — we just ensure the section is expanded
+  void setCategoryParam
 
   useEffect(() => {
     fetch('/api/outputs')
@@ -243,7 +356,6 @@ export function OutputsPage() {
       .catch(() => setLoading(false))
   }, [])
 
-  // Load content whenever selectedPath changes (handles URL deep links too)
   useEffect(() => {
     if (!selectedPath) {
       setSelectedContent('')
@@ -267,13 +379,12 @@ export function OutputsPage() {
     [selectedPath, setSelectedPath],
   )
 
+  // Story 26.7: Group by section, then 26.6 sub-types happen inside each section
   const grouped = useMemo(() => {
-    const result: Partial<Record<OutputCategory, OutputFile[]>> = {}
+    const result: Record<OutputSection, OutputFile[]> = { project: [], executional: [], other: [] }
     for (const f of outputs) {
       if (f.name.startsWith('.')) continue
-      const cat = categorise(f.path)
-      if (!result[cat]) result[cat] = []
-      result[cat]!.push(f)
+      result[classifySection(f.path)].push(f)
     }
     return result
   }, [outputs])
@@ -313,7 +424,7 @@ export function OutputsPage() {
     )
   }
 
-  const categoryOrder: OutputCategory[] = ['brainstorming', 'planning', 'implementation', 'other']
+  const sectionOrder: OutputSection[] = ['project', 'executional', 'other']
 
   return (
     <div>
@@ -322,13 +433,13 @@ export function OutputsPage() {
       </div>
 
       <div className="space-y-3">
-        {categoryOrder
-          .filter((cat) => grouped[cat] && grouped[cat]!.length > 0)
-          .map((cat, idx) => (
-            <CategorySection
-              key={cat}
-              category={cat}
-              files={grouped[cat]!}
+        {sectionOrder
+          .filter((sec) => grouped[sec].length > 0)
+          .map((sec, idx) => (
+            <OutputSectionPanel
+              key={sec}
+              section={sec}
+              files={grouped[sec]}
               selectedPath={selectedPath}
               onSelect={handleSelect}
               defaultOpen={idx === 0}
