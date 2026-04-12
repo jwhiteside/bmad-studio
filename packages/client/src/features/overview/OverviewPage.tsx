@@ -1,10 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GitBranch, Zap, Plug, Package, Rocket, Users, ArrowRight, CheckCircle2, FileText, Wrench, AlertTriangle, ShieldCheck, BarChart3, ChevronDown, RefreshCw, SkipForward } from 'lucide-react'
+import { Rocket, ArrowRight, CheckCircle2, FileText, Wrench, AlertTriangle, ShieldCheck, BarChart3, ChevronDown, RefreshCw, SkipForward } from 'lucide-react'
 
 import { EmptyState } from '../../shared/EmptyState.js'
-import { WorkflowTypeBadge } from '../workflows/WorkflowsPage.js'
-import { EntityCard, CardIcon, CardHeader, CardBody, CardDescription, CardFooter, ModuleBadge, CardGrid } from '../../shared/EntityCard.js'
 
 function formatRelativeDate(input: string): string {
   const date = new Date(input)
@@ -158,7 +156,7 @@ function ProjectStatusPanel({ health }: { health: ProjectHealth }) {
               {/* Story 26.1: Expandable epics list */}
               {sprint.epicDetails && sprint.epicDetails.length > 0 && (
                 <div className="space-y-1.5 pt-1">
-                  {sprint.epicDetails.map((epic) => (
+                  {sprint.epicDetails.slice(0, 5).map((epic) => (
                     <EpicAccordion key={epic.id} epic={epic} />
                   ))}
                 </div>
@@ -208,7 +206,7 @@ function ProjectStatusPanel({ health }: { health: ProjectHealth }) {
                 <div>
                   <p className="text-xs font-bold text-[var(--color-muted)] mb-2">Recent</p>
                   <div className="space-y-1.5">
-                    {recentOutputs.slice(0, 4).map((f) => {
+                    {recentOutputs.slice(0, 5).map((f) => {
                       const friendlyDate = formatRelativeDate(f.modifiedAt)
                       return (
                         <Link
@@ -441,7 +439,7 @@ function PhaseTimeline({ commands }: { commands: CommandItem[] }) {
 
 type OverviewData = {
   detected: boolean
-  projectHealth?: { hasProjectContext: boolean }
+  projectHealth?: { hasProjectContext: boolean; projectDescription?: string }
   toolkitStats?: {
     totalSkills: number
     assignedSkills: number
@@ -485,25 +483,7 @@ type OverviewData = {
   }
 }
 
-function SectionHeader({ title, count, to }: { title: string; count: number; to: string }) {
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)]">{title}</h2>
-      <Link
-        to={to}
-        className="text-sm font-bold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors"
-      >
-        View all ({count}) &rarr;
-      </Link>
-    </div>
-  )
-}
-
-const MAX_OVERVIEW_ITEMS = 5
-const MAX_OVERVIEW_AGENTS = 8
-
 export function OverviewPage() {
-  const navigate = useNavigate()
   const [data, setData] = useState<OverviewData | null>(null)
   const [commands, setCommands] = useState<CommandItem[]>([])
   const [health, setHealth] = useState<ProjectHealth | null>(null)
@@ -544,13 +524,18 @@ export function OverviewPage() {
     )
   }
 
-  const { sections } = data
-
   return (
     <div>
-      <h1 className="text-3xl font-extrabold mb-10">Home</h1>
+      <h1 className="text-3xl font-extrabold mb-6">Home</h1>
 
-      {/* Story 26.8: Project Context warning banner */}
+      {/* Product description from project-context.md */}
+      {data.projectHealth?.projectDescription && (
+        <p className="text-sm text-[var(--color-muted)] mb-8 max-w-3xl leading-relaxed">
+          {data.projectHealth.projectDescription}
+        </p>
+      )}
+
+      {/* Project Context warning banner */}
       {data.projectHealth && !data.projectHealth.hasProjectContext && (
         <div className="mb-6 flex items-center gap-3 rounded-lg border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/5 px-4 py-3">
           <AlertTriangle size={18} className="text-[var(--color-warning)] shrink-0" />
@@ -576,7 +561,7 @@ export function OverviewPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)]">Toolkit</h2>
               <Link
-                to="/skills"
+                to="/toolkit"
                 className="text-sm font-bold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors"
               >
                 View Toolkit &rarr;
@@ -622,178 +607,8 @@ export function OverviewPage() {
           </section>
         )}
 
-        {/* Agents — first section, renamed from "The Team" */}
-        {sections.team && sections.team.count > 0 && (
-          <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
-            <SectionHeader title="Agents" count={sections.team.count} to="/agents" />
-            <CardGrid>
-              {sections.team.agents.filter((a) => a.name || a.title).slice(0, MAX_OVERVIEW_AGENTS).map((agent) => (
-                <EntityCard key={agent.id} onClick={() => navigate(`/agents/${agent.id}`)}>
-                  <CardHeader
-                    icon={<CardIcon emoji={agent.icon} fallbackInitial={agent.name} />}
-                    title={agent.name}
-                    subtitle={agent.title}
-                  />
-                  <CardBody>
-                    {agent.communicationStyle ? (
-                      <p className="text-xs italic text-[var(--color-muted)] line-clamp-1">
-                        &ldquo;{agent.communicationStyle.length > 60 ? agent.communicationStyle.slice(0, 60) + '...' : agent.communicationStyle}&rdquo;
-                      </p>
-                    ) : (
-                      <div className="h-4" />
-                    )}
-                  </CardBody>
-                  <CardFooter
-                    left={<span>{agent.skillCount} skills</span>}
-                    right={<ModuleBadge module={agent.module} />}
-                  />
-                </EntityCard>
-              ))}
-            </CardGrid>
-            {sections.team.count > MAX_OVERVIEW_AGENTS && (
-              <Link
-                to="/agents"
-                className="block text-center text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] py-2 mt-2"
-              >
-                + {sections.team.count - MAX_OVERVIEW_AGENTS} more agents
-              </Link>
-            )}
-          </section>
-        )}
-
-        {/* Teams — below Agents */}
-        {sections.teams && sections.teams.count > 0 && (
-          <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
-            <SectionHeader title="Teams" count={sections.teams.count} to="/teams" />
-            <CardGrid>
-              {sections.teams.teams.map((t) => (
-                <EntityCard key={t.id} onClick={() => navigate('/teams')}>
-                  <CardHeader
-                    icon={<CardIcon emoji={t.icon} fallbackIcon={<Users size={16} />} />}
-                    title={t.name}
-                    subtitle={`${t.memberCount} members`}
-                  />
-                  <CardBody>
-                    {t.description ? (
-                      <CardDescription text={t.description} />
-                    ) : (
-                      <div className="h-4" />
-                    )}
-                  </CardBody>
-                </EntityCard>
-              ))}
-            </CardGrid>
-          </section>
-        )}
-
-        {/* Workflows — top 5 */}
-        {sections.process && sections.process.count > 0 && (
-          <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
-            <SectionHeader title="Workflows" count={sections.process.count} to="/workflows" />
-            <div className="space-y-2">
-              {sections.process.workflows.slice(0, MAX_OVERVIEW_ITEMS).map((wf) => (
-                <button
-                  key={wf.id}
-                  onClick={() => navigate('/workflows')}
-                  className="w-full flex items-center justify-between p-3 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <GitBranch size={16} className="text-[var(--color-muted)]" />
-                    <span className="text-sm font-bold">{wf.name}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <WorkflowTypeBadge type={wf.type as 'step-based' | 'agent-based' | 'composite' | undefined} />
-                    <span className="text-xs text-[var(--color-muted)]">{wf.stepCount} steps</span>
-                    {wf.module && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-[var(--color-muted)]">
-                        {wf.module}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              ))}
-              {sections.process.count > MAX_OVERVIEW_ITEMS && (
-                <Link
-                  to="/workflows"
-                  className="block text-center text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] py-2"
-                >
-                  + {sections.process.count - MAX_OVERVIEW_ITEMS} more workflows
-                </Link>
-              )}
-            </div>
-          </section>
-        )}
-
         {/* Phase Timeline */}
         {commands.length > 0 && <PhaseTimeline commands={commands} />}
-
-        {/* Skills — card-style, top items */}
-        {sections.toolkit && sections.toolkit.count > 0 && (
-          <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
-            <SectionHeader title="Skills" count={sections.toolkit.count} to="/skills" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {sections.toolkit.skills.slice(0, 8).map((skill) => (
-                <button
-                  key={skill.id}
-                  onClick={() => navigate('/skills')}
-                  className="flex items-center gap-2 p-3 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] text-left hover:border-[var(--color-accent)] transition-colors cursor-pointer"
-                >
-                  <Zap size={14} className="text-[var(--color-accent)] shrink-0" />
-                  <span className="text-sm truncate">{skill.name}</span>
-                </button>
-              ))}
-            </div>
-            {sections.toolkit.count > 8 && (
-              <Link
-                to="/skills"
-                className="block text-center text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] py-2 mt-2"
-              >
-                + {sections.toolkit.count - 8} more skills
-              </Link>
-            )}
-          </section>
-        )}
-
-        {/* Connections */}
-        {sections.ideConfigs && sections.ideConfigs.count > 0 && (
-          <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
-            <SectionHeader title="IDE Connections" count={sections.ideConfigs.count} to="/connections" />
-            <div className="flex gap-3 flex-wrap">
-              {sections.ideConfigs.ides.map((ide) => (
-                <button
-                  key={ide}
-                  onClick={() => navigate('/connections')}
-                  className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer"
-                >
-                  <Plug size={16} className="text-[var(--color-success)]" />
-                  <span className="text-sm">{ide}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Modules */}
-        {sections.packages && sections.packages.count > 0 && (
-          <section>
-            <SectionHeader title="Modules" count={sections.packages.count} to="/modules" />
-            <div className="flex gap-4 flex-wrap">
-              {sections.packages.packages.map((pkg) => (
-                <button
-                  key={pkg.name}
-                  onClick={() => navigate('/modules')}
-                  className="p-4 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] text-left hover:border-[var(--color-accent)] hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <Package size={16} className="text-[var(--color-muted)]" />
-                    <span className="font-bold text-sm">{pkg.name}</span>
-                  </div>
-                  <p className="text-xs text-[var(--color-muted)] mt-1">v{pkg.version}</p>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
       </div>
     </div>
   )

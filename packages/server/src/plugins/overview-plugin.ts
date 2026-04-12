@@ -12,9 +12,20 @@ export async function overviewPlugin(app: FastifyInstance) {
 
     const index = app.fileStore.getIndex()
 
-    // Detect project-context.md (Story 26.8)
+    // Detect project-context.md and extract overview description
     const projectContextPath = path.join(app.fileStore.projectRoot, '_bmad-output', 'project-context.md')
     const hasProjectContext = fs.existsSync(projectContextPath)
+    let projectDescription = ''
+    if (hasProjectContext) {
+      const content = fs.readFileSync(projectContextPath, 'utf-8')
+      // Extract first paragraph after "## Project Overview" or "## Overview"
+      const overviewMatch = content.match(/^##\s+(?:Project\s+)?Overview\s*\n+([\s\S]*?)(?=\n##|\n---|\n$)/im)
+      if (overviewMatch) {
+        // Take the first paragraph (non-empty lines before a blank line)
+        const firstPara = overviewMatch[1].trim().split(/\n\n/)[0].trim()
+        projectDescription = firstPara
+      }
+    }
 
     // Toolkit summary stats (Story 26.3)
     const assignedSkillIds = new Set<string>()
@@ -34,7 +45,7 @@ export async function overviewPlugin(app: FastifyInstance) {
 
     return {
       detected: true,
-      projectHealth: { hasProjectContext },
+      projectHealth: { hasProjectContext, projectDescription },
       toolkitStats,
       sections: {
         teams: {

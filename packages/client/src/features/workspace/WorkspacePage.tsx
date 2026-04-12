@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Briefcase, ChevronDown, ChevronRight, Settings, CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react'
 import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 import { EmptyState } from '../../shared/EmptyState.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
@@ -480,7 +481,7 @@ export function WorkspacePage() {
       {activeTab === 'preview' && (
         <div className="rounded-lg border border-[var(--color-border-subtle)] p-6">
           <div className="prose prose-sm max-w-none text-[var(--color-text)] prose-headings:text-[var(--color-text)] prose-headings:font-bold prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-a:text-[var(--color-accent)] prose-strong:text-[var(--color-text)]">
-            <Markdown>{activeTab === 'preview' ? (rawEdit || '') : ''}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm]}>{activeTab === 'preview' ? (rawEdit || '') : ''}</Markdown>
           </div>
         </div>
       )}

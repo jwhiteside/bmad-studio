@@ -12,12 +12,15 @@ BMAD Studio is the **configuration and visibility layer** for BMAD projects. It 
 
 ## Features
 
-- **Overview Dashboard** — See your entire BMAD project at a glance: agents, teams, workflows, skills, data sources
+- **Project Dashboard** — Sprint status, output hub, toolkit stats, and BMAD process visualization at a glance
+- **Output Hub** — Browse all project deliverables grouped by BMAD phase (Analysis, Planning, Solutioning, Implementation)
 - **Agent Management** — Browse agents, view their skills and workflow roles, edit overrides
-- **Workflow Visualization** — Step-by-step workflow detail with variant tabs, nested step hierarchy, and supporting file previews
+- **Workflow Visualization** — Step-by-step detail with variant tabs, nested hierarchy, and phase timeline with Quick Flow bypass
 - **Skill Library** — Browse, create, and assign skills to agents
 - **Team Management** — Create and manage agent teams for collaborative workflows and Party Mode
-- **Module Management** — Install, configure, and export BMAD modules
+- **Module Registry** — Browse, install, and manage modules from a central registry
+- **Project Switching** — Switch between registered BMAD projects without restarting the server
+- **Project Context Editor** — Structured editor for project-context.md with per-section editing and rules management
 - **Live Reload** — File system changes appear instantly via WebSocket
 - **Dark/Light Theme** — Automatic theme detection with manual toggle
 
@@ -90,10 +93,10 @@ packages/
 
 | Layer | Technology |
 |-------|-----------|
-| Client | React 19, React Router 7, Tailwind CSS 4, TanStack Query, CodeMirror 6, React Flow |
-| Server | Fastify 5, Chokidar (file watching), gray-matter (frontmatter parsing) |
-| Shared | TypeScript 5.8 |
-| Build | Vite 6, tsx (dev), Vitest (testing) |
+| Client | React 18, React Router, Tailwind CSS, shadcn/ui, CodeMirror 6 |
+| Server | Fastify 5, Chokidar (file watching), WebSocket (live updates) |
+| Shared | TypeScript |
+| Build | Vite, tsx (dev), Vitest (testing) |
 
 ## BMAD Concepts
 
