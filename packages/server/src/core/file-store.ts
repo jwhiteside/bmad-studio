@@ -35,7 +35,7 @@ export type FileStoreOptions = {
 
 export class FileStore {
   private index: EntityIndex
-  private pendingWrites = new Set<string>()
+  readonly pendingWrites = new Set<string>()
   private batchedEvents: FileChangeEvent[] = []
   private batchTimer: ReturnType<typeof setTimeout> | null = null
   private watcher: ReturnType<typeof watch> | null = null
@@ -170,7 +170,9 @@ export class FileStore {
   }
 }
 
-export async function registerFileStore(app: FastifyInstance, projectRoot: string) {
+export type FileStoreHolder = { current: FileStore | null }
+
+export async function createFileStore(app: FastifyInstance, projectRoot: string): Promise<FileStore> {
   const studioDir = path.join(projectRoot, '.bmad-studio')
 
   const store = new FileStore({
@@ -194,16 +196,40 @@ export async function registerFileStore(app: FastifyInstance, projectRoot: strin
   })
 
   await store.initialize()
+  return store
+}
 
-  app.decorate('fileStore', store)
+export async function registerFileStore(app: FastifyInstance, projectRoot: string) {
+  const store = await createFileStore(app, projectRoot)
+  const holder: FileStoreHolder = { current: store }
+
+  app.decorate('fileStoreHolder', holder)
+  // Backwards-compat getter so 'fileStore' in app and app.fileStore still work
+  app.decorate('fileStore', {
+    getter(): FileStore {
+      if (!holder.current) throw Object.assign(new Error('No project loaded'), { statusCode: 503 })
+      return holder.current
+    },
+  })
 
   app.addHook('onClose', async () => {
-    await store.close()
+    if (holder.current) {
+      await holder.current.close()
+      holder.current = null
+    }
   })
+}
+
+/** Get the active FileStore or throw 503 if unavailable (switching/no project) */
+export function getFileStore(app: FastifyInstance): FileStore {
+  const store = app.fileStoreHolder?.current
+  if (!store) throw Object.assign(new Error('No project loaded'), { statusCode: 503 })
+  return store
 }
 
 declare module 'fastify' {
   interface FastifyInstance {
+    fileStoreHolder: FileStoreHolder
     fileStore: FileStore
   }
 }

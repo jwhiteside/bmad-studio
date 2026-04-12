@@ -7,7 +7,7 @@ import type { AppInfo, ProjectStatus } from '@bmad-studio/shared'
 import type { FastifyServerOptions } from 'fastify'
 
 import { registerStatic } from './static.js'
-import { registerFileStore } from './core/file-store.js'
+import { registerFileStore, createFileStore } from './core/file-store.js'
 import { registerWebSocket } from './core/websocket.js'
 import { AppError } from './core/errors.js'
 import { overviewPlugin } from './plugins/overview-plugin.js'
@@ -23,7 +23,7 @@ import { modulesPlugin } from './plugins/modules-plugin.js'
 import { teamsPlugin } from './plugins/teams-plugin.js'
 import { commandsPlugin } from './plugins/commands-plugin.js'
 import { datasourcesPlugin } from './plugins/datasources-plugin.js'
-import type { ProjectDetectionResult } from './core/project-detector.js'
+import { detectProject, type ProjectDetectionResult } from './core/project-detector.js'
 
 // Bump this constant if a real registry module exceeds the limit. Local-tool default —
 // not security-critical. See finding #17 / spec §6.1 for the rationale.
@@ -80,12 +80,67 @@ export async function createApp(options: CreateAppOptions = {}) {
         ideDirectories: [],
       }
 
+  // Mutable project status — updated on switch
+  let currentProjectStatus = { ...projectStatus }
+  let currentProjectRoot = projectRoot
+
   // Expose name/path fields alongside the full project status for the Sidebar project switcher
   app.get('/api/project', async () => ({
-    ...projectStatus,
-    name: projectRoot ? path.basename(projectRoot) : null,
-    path: projectRoot ?? null,
+    ...currentProjectStatus,
+    name: currentProjectRoot ? path.basename(currentProjectRoot) : null,
+    path: currentProjectRoot ?? null,
   }))
+
+  // Story 28.1: Project switch endpoint
+  app.post<{ Body: { path: string } }>('/api/project/switch', async (request) => {
+    const targetPath = request.body?.path
+    if (!targetPath) throw Object.assign(new Error('Missing project path'), { statusCode: 400 })
+
+    // Validate the target is a BMAD project
+    const detected = detectProject(targetPath)
+    if (!detected) throw Object.assign(new Error(`No BMAD project found at: ${targetPath}`), { statusCode: 404 })
+
+    // Check no writes in progress
+    const holder = app.fileStoreHolder
+    if (holder?.current && holder.current.pendingWrites.size > 0) {
+      throw Object.assign(new Error('Cannot switch while file writes are in progress'), { statusCode: 409 })
+    }
+
+    // Teardown old store
+    if (holder?.current) {
+      await holder.current.close()
+      holder.current = null
+    }
+
+    // Initialize new store
+    const newStore = await createFileStore(app, detected.projectRoot)
+    holder.current = newStore
+
+    // Update mutable project status
+    currentProjectRoot = detected.projectRoot
+    currentProjectStatus = {
+      detected: true,
+      bmadVersion: detected.bmadVersion ?? undefined,
+      projectRoot: detected.projectRoot,
+      modules: detected.modules.map((m) => m.name),
+      ideDirectories: detected.ideDirectories,
+    }
+
+    // Story 28.2: Broadcast switch event
+    if (app.ws) {
+      app.ws.broadcast({
+        type: 'project:switched',
+        projectName: path.basename(detected.projectRoot),
+        projectRoot: detected.projectRoot,
+      })
+    }
+
+    return {
+      ...currentProjectStatus,
+      name: path.basename(detected.projectRoot),
+      path: detected.projectRoot,
+    }
+  })
 
   // Register WebSocket support
   await registerWebSocket(app)

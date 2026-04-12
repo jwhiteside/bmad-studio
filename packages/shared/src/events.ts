@@ -27,9 +27,16 @@ export type CompileNeededEvent = {
   agents: string[]
 }
 
+export type ProjectSwitchedEvent = {
+  type: 'project:switched'
+  projectName: string
+  projectRoot: string
+}
+
 export type WebSocketEvent =
   | FileChangedEvent
   | FileCreatedEvent
   | FileDeletedEvent
   | ProjectReloadedEvent
   | CompileNeededEvent
+  | ProjectSwitchedEvent

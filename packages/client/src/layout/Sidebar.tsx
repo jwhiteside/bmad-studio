@@ -17,10 +17,11 @@ import {
   Info,
   FolderOpen,
   ChevronDown,
-  Terminal,
+  Loader2,
   Layers,
 } from 'lucide-react'
 
+import type { WebSocketEvent } from '@bmad-studio/shared'
 import { toggleTheme } from '../lib/theme.js'
 import { useThemeStore } from '../stores/ui-store.js'
 import { useWebSocket } from '../hooks/use-websocket.js'
@@ -98,6 +99,7 @@ export function Sidebar() {
   const [currentProject, setCurrentProject] = useState<{ name: string | null; path: string | null } | null>(null)
   const [allProjects, setAllProjects] = useState<ProjectEntry[]>([])
   const [showProjectMenu, setShowProjectMenu] = useState(false)
+  const [switching, setSwitching] = useState(false)
   const projectMenuRef = useRef<HTMLDivElement>(null)
 
   const fetchBadgeCounts = useCallback(() => {
@@ -144,11 +146,42 @@ export function Sidebar() {
   }, [showProjectMenu])
 
   useWebSocket(
-    useCallback(() => {
+    useCallback((event: WebSocketEvent) => {
+      if (event.type === 'project:switched') {
+        // Refresh everything after a project switch
+        setCurrentProject({ name: event.projectName, path: event.projectRoot })
+        setSwitching(false)
+        fetchBadgeCounts()
+        // Reload the page to clear all component state
+        window.location.href = '/'
+        return
+      }
       if (debounceRef.current) clearTimeout(debounceRef.current)
       debounceRef.current = setTimeout(fetchBadgeCounts, 200)
     }, [fetchBadgeCounts]),
   )
+
+  async function handleSwitchProject(projectPath: string) {
+    if (!confirm('Switch project? Any unsaved changes will be lost.')) return
+    setSwitching(true)
+    setShowProjectMenu(false)
+    try {
+      const resp = await fetch('/api/project/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: projectPath }),
+      })
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({})) as { message?: string }
+        alert(data.message ?? 'Failed to switch project')
+        setSwitching(false)
+      }
+      // Success handled by WebSocket project:switched event
+    } catch {
+      alert('Failed to switch project')
+      setSwitching(false)
+    }
+  }
 
   const appTitle = useAppTitle()
 
@@ -167,30 +200,33 @@ export function Sidebar() {
           <div className="relative" ref={projectMenuRef}>
             <button
               onClick={() => setShowProjectMenu((v) => !v)}
+              disabled={switching}
               className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors max-w-full"
               title={currentProject.path ?? undefined}
             >
-              <FolderOpen size={12} className="shrink-0" />
-              <span className="truncate">{currentProject.name}</span>
-              {otherProjects.length > 0 && <ChevronDown size={11} className="shrink-0" />}
+              {switching ? (
+                <Loader2 size={12} className="shrink-0 animate-spin" />
+              ) : (
+                <FolderOpen size={12} className="shrink-0" />
+              )}
+              <span className="truncate">{switching ? 'Switching...' : currentProject.name}</span>
+              {!switching && otherProjects.length > 0 && <ChevronDown size={11} className="shrink-0" />}
             </button>
 
-            {showProjectMenu && otherProjects.length > 0 && (
+            {showProjectMenu && !switching && otherProjects.length > 0 && (
               <div className="absolute left-0 top-full mt-1 w-56 bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-lg shadow-xl z-50 overflow-hidden">
                 <div className="px-3 py-2 border-b border-[var(--color-border-subtle)]">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)]">Switch Project</p>
                 </div>
                 {otherProjects.slice(0, 5).map((p) => (
-                  <div key={p.path} className="px-3 py-2 hover:bg-[var(--color-surface-raised)] transition-colors">
+                  <button
+                    key={p.path}
+                    onClick={() => handleSwitchProject(p.path)}
+                    className="w-full text-left px-3 py-2.5 hover:bg-[var(--color-surface-raised)] transition-colors cursor-pointer"
+                  >
                     <p className="text-xs font-bold text-[var(--color-text)] truncate">{p.name}</p>
                     <p className="text-[10px] text-[var(--color-muted)] truncate mt-0.5" title={p.path}>{p.path}</p>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <Terminal size={10} className="text-[var(--color-muted)] shrink-0" />
-                      <code className="text-[10px] font-[var(--font-mono)] text-[var(--color-muted)] truncate">
-                        cd {p.path} &amp;&amp; npx bmad-studio
-                      </code>
-                    </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
