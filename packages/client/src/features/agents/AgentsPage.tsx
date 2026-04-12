@@ -7,6 +7,7 @@ import { AgentCard } from './AgentCard.js'
 import { CreateAgentDialog } from './CreateAgentDialog.js'
 import { EmptyState } from '../../shared/EmptyState.js'
 import { EntityPageHeader } from '../../shared/EntityPageHeader.js'
+import { CardGrid } from '../../shared/EntityCard.js'
 import { SkeletonCard } from '../../shared/Skeleton.js'
 
 export function AgentsPage() {
@@ -93,7 +94,7 @@ export function AgentsPage() {
                 onClick={() => setShowCreate(true)}
                 className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors"
               >
-                Create Agent
+                New Agent
               </button>
             </>
           }
@@ -129,11 +130,11 @@ export function AgentsPage() {
       />
 
       {/* Card grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <CardGrid>
         {filtered.map((agent) => (
           <AgentCard key={agent.id} agent={agent} />
         ))}
-      </div>
+      </CardGrid>
 
       {filtered.length === 0 && (
         <p className="text-center text-sm text-[var(--color-muted)] py-8">

@@ -10,6 +10,16 @@ import { EmptyState } from '../../shared/EmptyState.js'
 import { EntityPageHeader } from '../../shared/EntityPageHeader.js'
 import { SkeletonCard } from '../../shared/Skeleton.js'
 import { useDetailParam } from '../../hooks/use-detail-param.js'
+import {
+  EntityCard,
+  CardIcon,
+  CardHeader,
+  CardBody,
+  CardDescription,
+  CardFooter,
+  ModuleBadge,
+  CardGrid,
+} from '../../shared/EntityCard.js'
 
 function TeamCard({
   team,
@@ -21,49 +31,42 @@ function TeamCard({
   onClick: () => void
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`p-4 rounded-lg border text-left transition-all cursor-pointer hover:-translate-y-0.5 hover:shadow-md ${
-        isSelected
-          ? 'bg-[var(--color-surface-raised)] border-[var(--color-accent)]'
-          : 'bg-[var(--color-surface-raised)] border-[var(--color-border-subtle)] hover:border-[var(--color-accent)]'
-      }`}
-    >
-      <div className="flex items-center gap-2 mb-2">
-        {team.icon && <span className="text-lg leading-none" role="img" aria-label={`${team.name} icon`}>{team.icon}</span>}
-        <span className="font-bold text-sm truncate">{team.name}</span>
-        {team.module && (
-          <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-[var(--color-muted)] shrink-0">
-            {team.module}
-          </span>
+    <EntityCard onClick={onClick} selected={isSelected}>
+      <CardHeader
+        icon={
+          <CardIcon
+            emoji={team.icon}
+            fallbackIcon={<Users size={16} />}
+          />
+        }
+        title={team.name}
+        subtitle={`${team.memberCount} members`}
+      />
+      <CardBody>
+        {team.description ? (
+          <CardDescription text={team.description} />
+        ) : (
+          <div className="h-4" />
         )}
-      </div>
-      {team.description && (
-        <p className="text-xs text-[var(--color-muted)] line-clamp-2 mb-2">{team.description}</p>
-      )}
-      {team.agentIds && team.agentIds.length > 0 && (
-        <div className="flex items-center gap-1 mb-2 flex-wrap">
-          {team.agentIds.slice(0, 8).map((id) => (
-            <span
-              key={id}
-              title={id}
-              className="w-6 h-6 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-xs flex items-center justify-center font-bold text-[var(--color-muted)] uppercase shrink-0"
-            >
-              {id.charAt(0)}
-            </span>
-          ))}
-          {team.agentIds.length > 8 && (
-            <span className="text-xs text-[var(--color-muted)]">+{team.agentIds.length - 8} more</span>
-          )}
-        </div>
-      )}
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-[var(--color-muted)]">
-          <Users size={10} className="inline mr-1" />
-          {team.memberCount} members
-        </span>
-      </div>
-    </button>
+        {team.agentIds && team.agentIds.length > 0 && (
+          <div className="flex items-center gap-1 mt-2 flex-wrap">
+            {team.agentIds.slice(0, 6).map((id) => (
+              <span
+                key={id}
+                title={id}
+                className="w-6 h-6 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-xs flex items-center justify-center font-bold text-[var(--color-muted)] uppercase shrink-0"
+              >
+                {id.charAt(0)}
+              </span>
+            ))}
+            {team.agentIds.length > 6 && (
+              <span className="text-xs text-[var(--color-muted)]">+{team.agentIds.length - 6}</span>
+            )}
+          </div>
+        )}
+      </CardBody>
+      <CardFooter right={<ModuleBadge module={team.module} />} />
+    </EntityCard>
   )
 }
 
@@ -133,7 +136,7 @@ export function TeamsPage() {
               className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
             >
               <Plus size={14} />
-              Create Team
+              New Team
             </button>
           }
         />
@@ -173,7 +176,7 @@ export function TeamsPage() {
       />
 
       {/* Card grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <CardGrid>
         {filtered.map((team) => (
           <TeamCard
             key={team.id}
@@ -182,7 +185,7 @@ export function TeamsPage() {
             onClick={() => setSelectedId(selectedId === team.id ? null : team.id)}
           />
         ))}
-      </div>
+      </CardGrid>
 
       {filtered.length === 0 && teams.length > 0 && (
         <p className="text-sm text-[var(--color-muted)] text-center py-8">

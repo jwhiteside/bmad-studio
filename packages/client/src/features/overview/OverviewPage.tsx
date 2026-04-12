@@ -4,6 +4,7 @@ import { GitBranch, Zap, Plug, Package, Rocket, Users, ArrowRight, CheckCircle2,
 
 import { EmptyState } from '../../shared/EmptyState.js'
 import { WorkflowTypeBadge } from '../workflows/WorkflowsPage.js'
+import { EntityCard, CardIcon, CardHeader, CardBody, CardDescription, CardFooter, ModuleBadge, CardGrid } from '../../shared/EntityCard.js'
 
 type OutputCategory = 'brainstorming' | 'planning' | 'implementation' | 'other'
 
@@ -420,49 +421,30 @@ export function OverviewPage() {
         {sections.team && sections.team.count > 0 && (
           <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
             <SectionHeader title="Agents" count={sections.team.count} to="/agents" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {sections.team.agents.filter((a) => a.name || a.title).slice(0, MAX_OVERVIEW_AGENTS).map((agent) => {
-                const styleSnippet = agent.communicationStyle
-                  ? agent.communicationStyle.length > 60
-                    ? agent.communicationStyle.slice(0, 60) + '...'
-                    : agent.communicationStyle
-                  : undefined
-                return (
-                  <button
-                    key={agent.id}
-                    onClick={() => navigate(`/agents/${agent.id}`)}
-                    className="p-4 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] text-left hover:border-[var(--color-accent)] hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      {agent.icon ? (
-                        <span className="text-2xl leading-none" role="img" aria-label={`${agent.name} icon`}>{agent.icon}</span>
-                      ) : (
-                        <span className="w-7 h-7 rounded-lg bg-[var(--color-accent)] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                          {agent.name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                      <div className="min-w-0">
-                        <span className="font-bold text-sm block truncate">{agent.name}</span>
-                        {agent.title && (
-                          <span className="text-xs text-[var(--color-muted)] block truncate">{agent.title}</span>
-                        )}
-                      </div>
-                    </div>
-                    {styleSnippet && (
-                      <p className="text-xs italic text-[var(--color-muted)] line-clamp-1 mb-1.5">&ldquo;{styleSnippet}&rdquo;</p>
+            <CardGrid>
+              {sections.team.agents.filter((a) => a.name || a.title).slice(0, MAX_OVERVIEW_AGENTS).map((agent) => (
+                <EntityCard key={agent.id} onClick={() => navigate(`/agents/${agent.id}`)}>
+                  <CardHeader
+                    icon={<CardIcon emoji={agent.icon} fallbackInitial={agent.name} />}
+                    title={agent.name}
+                    subtitle={agent.title}
+                  />
+                  <CardBody>
+                    {agent.communicationStyle ? (
+                      <p className="text-xs italic text-[var(--color-muted)] line-clamp-1">
+                        &ldquo;{agent.communicationStyle.length > 60 ? agent.communicationStyle.slice(0, 60) + '...' : agent.communicationStyle}&rdquo;
+                      </p>
+                    ) : (
+                      <div className="h-4" />
                     )}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[var(--color-muted)]">{agent.skillCount} skills</span>
-                      {agent.module && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-[var(--color-muted)]">
-                          {agent.module}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
+                  </CardBody>
+                  <CardFooter
+                    left={<span>{agent.skillCount} skills</span>}
+                    right={<ModuleBadge module={agent.module} />}
+                  />
+                </EntityCard>
+              ))}
+            </CardGrid>
             {sections.team.count > MAX_OVERVIEW_AGENTS && (
               <Link
                 to="/agents"
@@ -478,28 +460,24 @@ export function OverviewPage() {
         {sections.teams && sections.teams.count > 0 && (
           <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
             <SectionHeader title="Teams" count={sections.teams.count} to="/teams" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <CardGrid>
               {sections.teams.teams.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => navigate('/teams')}
-                  className="p-4 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] text-left hover:border-[var(--color-accent)] hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    {t.icon ? (
-                      <span className="text-lg leading-none" role="img" aria-label={`${t.name} icon`}>{t.icon}</span>
+                <EntityCard key={t.id} onClick={() => navigate('/teams')}>
+                  <CardHeader
+                    icon={<CardIcon emoji={t.icon} fallbackIcon={<Users size={16} />} />}
+                    title={t.name}
+                    subtitle={`${t.memberCount} members`}
+                  />
+                  <CardBody>
+                    {t.description ? (
+                      <CardDescription text={t.description} />
                     ) : (
-                      <Users size={18} className="text-[var(--color-accent)]" />
+                      <div className="h-4" />
                     )}
-                    <span className="font-bold text-sm truncate">{t.name}</span>
-                  </div>
-                  {t.description && (
-                    <p className="text-xs text-[var(--color-muted)] line-clamp-2 mb-1">{t.description}</p>
-                  )}
-                  <p className="text-xs text-[var(--color-muted)]">{t.memberCount} members</p>
-                </button>
+                  </CardBody>
+                </EntityCard>
               ))}
-            </div>
+            </CardGrid>
           </section>
         )}
 

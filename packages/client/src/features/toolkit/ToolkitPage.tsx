@@ -10,6 +10,7 @@ import { SkillDetailSlideOver } from '../skills/SkillDetailSlideOver.js'
 import { WorkflowDetailPanel } from '../workflows/WorkflowDetailPanel.js'
 import { useDetailParam } from '../../hooks/use-detail-param.js'
 import { SkeletonList } from '../../shared/Skeleton.js'
+import { EntityCard, CardIcon, CardHeader, CardBody, CardDescription, CardFooter, CardGrid } from '../../shared/EntityCard.js'
 
 type FilterType = 'all' | 'agent' | 'skill' | 'workflow' | 'team'
 
@@ -222,62 +223,46 @@ export function ToolkitPage() {
           No items match the current filters
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <CardGrid>
           {filtered.map((item) => {
             const badge = TYPE_BADGES[item.kind]
             const IconComponent = badge.Icon
             return (
-              <button
-                key={`${item.kind}-${item.id}`}
-                onClick={() => handleItemClick(item)}
-                className="text-left p-4 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] hover:border-[var(--color-accent)] transition-colors group"
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  {/* Icon */}
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${badge.colorClass}`}>
-                    {item.icon ? (
-                      <span className="text-lg leading-none" aria-hidden="true">{item.icon}</span>
-                    ) : (
-                      <IconComponent size={16} />
-                    )}
-                  </div>
-
-                  {/* Name/title */}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-sm truncate group-hover:text-[var(--color-accent)] transition-colors">
-                      {item.title || item.name}
-                    </p>
-                    {item.title && (
-                      <p className="text-xs text-[var(--color-muted)] font-[var(--font-mono)] truncate">
-                        {item.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Description */}
-                <p className="text-xs text-[var(--color-muted)] line-clamp-2 mb-3">
-                  {item.description}
-                </p>
-
-                {/* Footer: invoke hint + type badge */}
-                <div className="flex items-center justify-between">
-                  <code className="text-xs font-[var(--font-mono)] text-[var(--color-accent)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-1.5 py-0.5 rounded truncate max-w-[60%]">
-                    {item.invoke}
-                  </code>
-                  <div className="flex items-center gap-1.5">
-                    {item.module && (
-                      <span className="text-xs text-[var(--color-muted)]">{item.module}</span>
-                    )}
-                    <span className={`text-xs px-1.5 py-0.5 rounded font-bold uppercase ${badge.colorClass}`}>
-                      {badge.label}
-                    </span>
-                  </div>
-                </div>
-              </button>
+              <EntityCard key={`${item.kind}-${item.id}`} onClick={() => handleItemClick(item)}>
+                <CardHeader
+                  icon={
+                    <CardIcon
+                      emoji={item.icon}
+                      fallbackIcon={<IconComponent size={16} />}
+                    />
+                  }
+                  title={item.title || item.name}
+                  subtitle={item.title ? item.name : undefined}
+                />
+                <CardBody>
+                  <CardDescription text={item.description} />
+                </CardBody>
+                <CardFooter
+                  left={
+                    <code className="text-xs font-[var(--font-mono)] text-[var(--color-accent)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-1.5 py-0.5 rounded truncate max-w-[60%]">
+                      {item.invoke}
+                    </code>
+                  }
+                  right={
+                    <div className="flex items-center gap-1.5">
+                      {item.module && (
+                        <span className="text-xs text-[var(--color-muted)]">{item.module}</span>
+                      )}
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-bold uppercase ${badge.colorClass}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  }
+                />
+              </EntityCard>
             )
           })}
-        </div>
+        </CardGrid>
       )}
 
       {/* Skill slide-over */}
