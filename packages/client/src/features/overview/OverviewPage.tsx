@@ -236,7 +236,7 @@ function PhaseTimeline({ commands }: { commands: CommandItem[] }) {
           onClick={() => navigate('/commands')}
           className="text-sm font-bold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors cursor-pointer"
         >
-          View all commands &rarr;
+          View all triggers &rarr;
         </button>
       </div>
 
@@ -552,7 +552,7 @@ export function OverviewPage() {
         {/* Connections */}
         {sections.ideConfigs && sections.ideConfigs.count > 0 && (
           <section className="border-b border-[var(--color-border-subtle)] pb-10 mb-10">
-            <SectionHeader title="Data Sources" count={sections.ideConfigs.count} to="/connections" />
+            <SectionHeader title="IDE Connections" count={sections.ideConfigs.count} to="/connections" />
             <div className="flex gap-3 flex-wrap">
               {sections.ideConfigs.ides.map((ide) => (
                 <button
