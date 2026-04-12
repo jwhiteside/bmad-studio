@@ -22,7 +22,71 @@ function agentToListItem(agent: Agent): AgentListItem {
   }
 }
 
+function toKebab(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function escapeYaml(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
 export async function agentsPlugin(app: FastifyInstance) {
+  // Create a new custom agent
+  app.post('/api/agents', async (request, reply) => {
+    if (!('fileStore' in app)) throw new ValidationError('No project detected')
+
+    const body = request.body as {
+      name?: string
+      title?: string
+      icon?: string
+      role?: string
+      description?: string
+      skills?: string[]
+      module?: string
+      persona?: string
+    }
+
+    const name = body.name?.trim()
+    const title = (body.title?.trim() || name) ?? ''
+    const icon = body.icon?.trim() || ''
+    const role = body.role?.trim() || body.description?.trim() || ''
+    const skills = body.skills ?? []
+    const moduleName = body.module?.trim()
+    const persona = body.persona?.trim() || ''
+
+    if (!name) throw new ValidationError('Agent name is required')
+    if (!moduleName) throw new ValidationError('Module is required')
+
+    const moduleDir = path.join(app.fileStore.projectRoot, '_bmad', moduleName)
+    if (!fs.existsSync(moduleDir)) throw new NotFoundError(`Module "${moduleName}" not found`)
+
+    const agentsDir = path.join(moduleDir, 'agents')
+    const slug = toKebab(name)
+    const filePath = path.join(agentsDir, `${slug}.md`)
+
+    if (fs.existsSync(filePath)) throw new ValidationError(`Agent "${name}" already exists in module "${moduleName}"`)
+
+    const lines = ['---', `name: "${escapeYaml(name)}"`, `title: "${escapeYaml(title)}"`]
+    if (icon) lines.push(`icon: "${escapeYaml(icon)}"`)
+    if (role) lines.push(`role: "${escapeYaml(role)}"`)
+    if (skills.length > 0) {
+      lines.push('skills:')
+      for (const s of skills) lines.push(`  - ${s}`)
+    }
+    lines.push('---', '', persona || `# ${title}\n\n<!-- Add agent persona and instructions here -->`, '')
+
+    const result = writeFile(filePath, lines.join('\n'), app.fileStore.studioDir)
+    if (!result.ok) throw new ValidationError(result.error)
+
+    app.fileStore.rebuild()
+
+    reply.code(201)
+    return { ok: true, name, path: filePath }
+  })
+
   app.get('/api/agents', async () => {
     if (!('fileStore' in app)) return []
     const index = app.fileStore.getIndex()

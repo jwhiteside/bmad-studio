@@ -37,8 +37,12 @@ export function AgentCard({ agent }: AgentCardProps) {
         )}
       </div>
       {displayName && (
-        <p className="text-xs text-[var(--color-muted)] truncate mb-2">({displayName})</p>
+        <p className="text-xs text-[var(--color-muted)] truncate">({displayName})</p>
       )}
+      {agent.role && (
+        <p className="text-xs text-[var(--color-muted)] line-clamp-2 mt-1 mb-2">{agent.role}</p>
+      )}
+      {!agent.role && <div className="mb-2" />}
       <div className="flex items-center justify-between text-xs text-[var(--color-muted)]">
         <span>{agent.skillCount} skills</span>
         {agent.module && (
