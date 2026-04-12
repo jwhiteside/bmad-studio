@@ -1,9 +1,0 @@
-project_name: dept-shopify-ecosystem
-user_name: "{core:user_name}"
-communication_language: "{core:communication_language}"
-document_output_language: "{core:document_output_language}"
-output_folder: "/Users/jwhiteside/Code/bmad-studio/_bmad-output"
-planning_artifacts: "/Users/jwhiteside/Code/bmad-studio/_bmad-output/ecosystem-planning"
-implementation_artifacts: "/Users/jwhiteside/Code/bmad-studio/_bmad-output/ecosystem-implementation"
-integration_artifacts: "/Users/jwhiteside/Code/bmad-studio/_bmad-output/ecosystem-integration"
-project_knowledge: "/Users/jwhiteside/Code/bmad-studio/docs"

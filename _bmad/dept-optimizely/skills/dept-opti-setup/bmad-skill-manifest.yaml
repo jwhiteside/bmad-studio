@@ -1,4 +1,0 @@
-skills:
-  - canonicalId: dept-opti-setup
-    type: skill
-    description: Guided setup for a new Optimizely project. Determines platform (CMS 12 or SaaS CMS), establishes project conventions, configures reference material, and produces a project context document that all other agents and workflows can reference.

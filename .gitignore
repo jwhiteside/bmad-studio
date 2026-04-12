@@ -8,10 +8,11 @@ dist/
 # BMAD Studio runtime
 .bmad-studio/
 
+# BMAD project directory — installed via `npx bmad-method-install`, not committed
+_bmad/
+
 # Project-specific artifacts (not part of the open-source distribution)
 _bmad-output/
-_bmad/_config/agents/
-_bmad/dept-aem/
 docs/
 
 # Claude Code / IDE agent config (user-specific)

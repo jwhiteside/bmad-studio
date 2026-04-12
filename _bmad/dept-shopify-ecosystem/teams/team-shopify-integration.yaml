@@ -1,9 +1,0 @@
-bundle:
-  name: Integration Team
-  icon: 🔗
-  description: Integration architecture and implementation specialists.
-agents:
-  - integration-architect
-  - shopify-specialist
-  - ecosystem-consultant
-party: "./default-party.csv"

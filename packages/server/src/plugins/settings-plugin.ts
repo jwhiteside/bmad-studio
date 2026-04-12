@@ -80,14 +80,4 @@ export async function settingsPlugin(app: FastifyInstance) {
       return []
     }
   })
-
-  // GET /api/project — return current project info
-  app.get('/api/project', async () => {
-    if (!('fileStore' in app)) return { name: null, path: null }
-    const projectRoot = app.fileStore.projectRoot
-    return {
-      name: projectRoot ? path.basename(projectRoot) : null,
-      path: projectRoot ?? null,
-    }
-  })
 }

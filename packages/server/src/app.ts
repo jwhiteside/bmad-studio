@@ -1,3 +1,5 @@
+import path from 'node:path'
+
 import multipart from '@fastify/multipart'
 import Fastify from 'fastify'
 
@@ -63,11 +65,12 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   // Project status endpoint
   const project = options.project
+  const projectRoot = project?.projectRoot ?? undefined
   const projectStatus: ProjectStatus = project
     ? {
         detected: true,
         bmadVersion: project.bmadVersion ?? undefined,
-        projectRoot: project.projectRoot,
+        projectRoot,
         modules: project.modules.map((m) => m.name),
         ideDirectories: project.ideDirectories,
       }
@@ -77,7 +80,12 @@ export async function createApp(options: CreateAppOptions = {}) {
         ideDirectories: [],
       }
 
-  app.get('/api/project', async () => projectStatus)
+  // Expose name/path fields alongside the full project status for the Sidebar project switcher
+  app.get('/api/project', async () => ({
+    ...projectStatus,
+    name: projectRoot ? path.basename(projectRoot) : null,
+    path: projectRoot ?? null,
+  }))
 
   // Register WebSocket support
   await registerWebSocket(app)
