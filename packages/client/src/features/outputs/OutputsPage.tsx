@@ -380,7 +380,8 @@ export function OutputsPage() {
   if (loading) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Outputs</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Outputs</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Artifacts produced by BMAD workflows — grouped by methodology phase.</p>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-16 rounded-lg bg-[var(--color-surface-raised)] animate-pulse" />
@@ -393,7 +394,8 @@ export function OutputsPage() {
   if (totalVisible === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Outputs</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Outputs</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Artifacts produced by BMAD workflows — grouped by methodology phase.</p>
         <EmptyState
           icon={FileOutput}
           title="No outputs yet"
@@ -410,9 +412,10 @@ export function OutputsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-extrabold">Outputs ({totalVisible})</h1>
       </div>
+      <p className="text-sm text-[var(--color-muted)] mb-6">Artifacts produced by BMAD workflows — grouped by methodology phase.</p>
 
       <div className="space-y-3">
         {PHASE_ORDER

@@ -59,7 +59,8 @@ export function AgentsPage() {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Agents</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Agents</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">AI agents defined in your BMAD project — each with a role, persona, and assigned skills.</p>
         <SkeletonCard count={4} />
       </div>
     )
@@ -68,7 +69,8 @@ export function AgentsPage() {
   if (error) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Agents</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Agents</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">AI agents defined in your BMAD project — each with a role, persona, and assigned skills.</p>
         <p className="text-[var(--color-error)]">Failed to load agents: {error.message}</p>
       </div>
     )
@@ -77,7 +79,8 @@ export function AgentsPage() {
   if (!agents || agents.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Agents</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Agents</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">AI agents defined in your BMAD project — each with a role, persona, and assigned skills.</p>
         <EmptyState
           icon={Users}
           title="No agents found"

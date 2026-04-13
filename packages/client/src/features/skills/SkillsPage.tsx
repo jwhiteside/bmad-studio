@@ -55,7 +55,8 @@ export function SkillsPage() {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Skills</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Skills</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Standalone prompts that can be invoked directly or assigned to agents.</p>
         <SkeletonList count={4} />
       </div>
     )
@@ -64,7 +65,8 @@ export function SkillsPage() {
   if (!skills || skills.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Skills</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Skills</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Standalone prompts that can be invoked directly or assigned to agents.</p>
         <EmptyState
           icon={Zap}
           title="No skills found"

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Rocket, ArrowRight, CheckCircle2, FileText, Wrench, AlertTriangle, ShieldCheck, BarChart3, ChevronDown, RefreshCw, SkipForward } from 'lucide-react'
+import { Rocket, ArrowRight, CheckCircle2, FileText, AlertTriangle, ChevronDown, RefreshCw, SkipForward } from 'lucide-react'
 
 import { EmptyState } from '../../shared/EmptyState.js'
 
@@ -180,27 +180,21 @@ function ProjectStatusPanel({ health }: { health: ProjectHealth }) {
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-3">Output Hub</h3>
           {outputCounts.total > 0 ? (
             <div className="space-y-3">
-              <div className="flex gap-3 flex-wrap">
-                {outputCounts.brainstorming + outputCounts.planning > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { label: 'Analysis', count: outputCounts.brainstorming },
+                  { label: 'Planning', count: outputCounts.planning },
+                  { label: 'Implementation', count: outputCounts.implementation },
+                ].filter((p) => p.count > 0).map((p) => (
                   <Link
+                    key={p.label}
                     to="/outputs"
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] transition-colors text-xs"
                   >
-                    <FileText size={12} className="text-[var(--color-accent)] shrink-0" />
-                    <span className="font-bold">Project</span>
-                    <span className="text-[var(--color-muted)]">{outputCounts.brainstorming + outputCounts.planning}</span>
+                    <span className="font-bold">{p.label}</span>
+                    <span className="text-[var(--color-muted)]">{p.count}</span>
                   </Link>
-                )}
-                {outputCounts.implementation > 0 && (
-                  <Link
-                    to="/outputs"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] transition-colors text-xs"
-                  >
-                    <Wrench size={12} className="text-[var(--color-accent)] shrink-0" />
-                    <span className="font-bold">Executional</span>
-                    <span className="text-[var(--color-muted)]">{outputCounts.implementation}</span>
-                  </Link>
-                )}
+                ))}
               </div>
               {recentOutputs.length > 0 && (
                 <div>
@@ -333,23 +327,21 @@ function PhaseTimeline({ commands }: { commands: CommandItem[] }) {
       </div>
 
       {/* Horizontal phase timeline — all 4 phases always shown */}
-      <div className="flex gap-0 overflow-x-auto pb-2">
-        {PHASE_ORDER.map((phase, idx) => {
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        {PHASE_ORDER.map((phase) => {
           const cmds = phaseGroups.get(phase) ?? []
           const isEmpty = cmds.length === 0
           const isImpl = phase === '4-implementation'
-          // For implementation, show Build Cycle + support instead of flat list
           const displayCmds = isImpl ? [] : cmds
 
           return (
-            <div key={phase} className="flex items-start">
-              <div className={`min-w-[180px] flex-1 ${isEmpty ? 'opacity-40' : ''}`}>
-                <div className="flex items-center gap-1.5 mb-3 px-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-accent)]">
-                    {phaseLabel(phase)}
-                  </span>
-                  <span className="text-xs text-[var(--color-muted)]">({cmds.length})</span>
-                </div>
+            <div key={phase} className={`rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] p-3 ${isEmpty ? 'opacity-40' : ''}`}>
+              <div className="flex items-center gap-1.5 mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-accent)]">
+                  {phaseLabel(phase)}
+                </span>
+                <span className="text-[10px] text-[var(--color-muted)]">({cmds.length})</span>
+              </div>
 
                 {isImpl ? (
                   <div className="px-1 space-y-2">
@@ -391,12 +383,6 @@ function PhaseTimeline({ commands }: { commands: CommandItem[] }) {
                     )}
                   </div>
                 )}
-              </div>
-              {idx < PHASE_ORDER.length - 1 && (
-                <div className="flex items-center pt-8 px-2 text-[var(--color-muted)]">
-                  <ArrowRight size={16} />
-                </div>
-              )}
             </div>
           )
         })}
@@ -528,11 +514,14 @@ export function OverviewPage() {
     <div>
       <h1 className="text-3xl font-extrabold mb-6">Home</h1>
 
-      {/* Product description from project-context.md */}
+      {/* Product description in labelled panel */}
       {data.projectHealth?.projectDescription && (
-        <p className="text-sm text-[var(--color-muted)] mb-8 max-w-3xl leading-relaxed">
-          {data.projectHealth.projectDescription}
-        </p>
+        <div className="mb-8 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] p-5">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2">Project Context</h2>
+          <p className="text-sm text-[var(--color-text)] leading-relaxed">
+            {data.projectHealth.projectDescription}
+          </p>
+        </div>
       )}
 
       {/* Project Context warning banner */}
@@ -567,42 +556,19 @@ export function OverviewPage() {
                 View Toolkit &rarr;
               </Link>
             </div>
-            <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart3 size={16} className="text-[var(--color-accent)]" />
-                <span className="text-sm font-bold">
-                  {data.toolkitStats.totalSkills} skills loaded
-                  <span className="font-normal text-[var(--color-muted)]">
-                    {' · '}{data.toolkitStats.assignedSkills} assigned{' · '}{data.toolkitStats.unassignedSkills} unassigned
-                  </span>
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Link to="/agents" className="flex flex-col items-center gap-1 p-3 rounded-lg bg-[var(--color-bg)] hover:border-[var(--color-accent)] border border-[var(--color-border-subtle)] transition-colors">
-                  <span className="text-2xl font-extrabold text-[var(--color-text)]">{data.toolkitStats.totalAgents}</span>
-                  <span className="text-xs text-[var(--color-muted)]">Agents</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { to: '/agents', count: data.toolkitStats.totalAgents, label: 'Agents', icon: '👤' },
+                { to: '/skills', count: data.toolkitStats.totalSkills, label: 'Skills', icon: '⚡' },
+                { to: '/workflows', count: data.toolkitStats.totalWorkflows, label: 'Workflows', icon: '🔀' },
+                { to: '/teams', count: data.toolkitStats.totalTeams, label: 'Teams', icon: '👥' },
+              ].map((item) => (
+                <Link key={item.to} to={item.to} className="flex flex-col items-center gap-2 p-4 rounded-lg bg-[var(--color-surface-raised)] hover:border-[var(--color-accent)] border border-[var(--color-border-subtle)] transition-colors">
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="text-2xl font-extrabold text-[var(--color-text)]">{item.count}</span>
+                  <span className="text-xs text-[var(--color-muted)]">{item.label}</span>
                 </Link>
-                <Link to="/skills" className="flex flex-col items-center gap-1 p-3 rounded-lg bg-[var(--color-bg)] hover:border-[var(--color-accent)] border border-[var(--color-border-subtle)] transition-colors">
-                  <span className="text-2xl font-extrabold text-[var(--color-text)]">{data.toolkitStats.totalSkills}</span>
-                  <span className="text-xs text-[var(--color-muted)]">Skills</span>
-                </Link>
-                <Link to="/workflows" className="flex flex-col items-center gap-1 p-3 rounded-lg bg-[var(--color-bg)] hover:border-[var(--color-accent)] border border-[var(--color-border-subtle)] transition-colors">
-                  <span className="text-2xl font-extrabold text-[var(--color-text)]">{data.toolkitStats.totalWorkflows}</span>
-                  <span className="text-xs text-[var(--color-muted)]">Workflows</span>
-                </Link>
-                <Link to="/teams" className="flex flex-col items-center gap-1 p-3 rounded-lg bg-[var(--color-bg)] hover:border-[var(--color-accent)] border border-[var(--color-border-subtle)] transition-colors">
-                  <span className="text-2xl font-extrabold text-[var(--color-text)]">{data.toolkitStats.totalTeams}</span>
-                  <span className="text-xs text-[var(--color-muted)]">Teams</span>
-                </Link>
-              </div>
-
-              {/* Story 26.8: Project Context configured indicator */}
-              {data.projectHealth?.hasProjectContext && (
-                <div className="mt-4 pt-3 border-t border-[var(--color-border-subtle)] flex items-center gap-2 text-xs text-[var(--color-success)]">
-                  <ShieldCheck size={14} />
-                  <span>Project Context: Configured</span>
-                </div>
-              )}
+              ))}
             </div>
           </section>
         )}

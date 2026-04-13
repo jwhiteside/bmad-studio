@@ -116,7 +116,8 @@ export function TeamsPage() {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Teams</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Teams</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Named groups of agents that collaborate on workflows and Party Mode sessions.</p>
         <SkeletonCard count={3} />
       </div>
     )
@@ -125,7 +126,8 @@ export function TeamsPage() {
   if (!teams || teams.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Teams</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Teams</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Named groups of agents that collaborate on workflows and Party Mode sessions.</p>
         <EmptyState
           icon={Users}
           title="No teams found"

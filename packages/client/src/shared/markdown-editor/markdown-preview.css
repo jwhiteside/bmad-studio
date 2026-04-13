@@ -1,0 +1,179 @@
+/*
+ * Markdown Preview Styles
+ * Isolated styles for the .markdown-preview wrapper.
+ * Edit these to change how markdown renders in preview/split mode.
+ */
+
+.markdown-preview {
+  color: var(--color-text);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  max-width: none;
+}
+
+/* Headings */
+.markdown-preview h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text);
+}
+
+.markdown-preview h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-text);
+}
+
+.markdown-preview h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+}
+
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+}
+
+.markdown-preview h1:first-child {
+  margin-top: 0;
+}
+
+/* Paragraphs */
+.markdown-preview p {
+  margin-bottom: 0.75rem;
+}
+
+/* Links */
+.markdown-preview a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.markdown-preview a:hover {
+  text-decoration: underline;
+}
+
+/* Bold / Italic */
+.markdown-preview strong {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Lists */
+.markdown-preview ul,
+.markdown-preview ol {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.markdown-preview ul {
+  list-style-type: disc;
+}
+
+.markdown-preview ol {
+  list-style-type: decimal;
+}
+
+.markdown-preview li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-preview li::marker {
+  color: var(--color-muted);
+}
+
+.markdown-preview li > ul,
+.markdown-preview li > ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+/* Blockquotes */
+.markdown-preview blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+/* Horizontal rules */
+.markdown-preview hr {
+  border: none;
+  border-top: 1px solid var(--color-border-subtle);
+  margin: 1.5rem 0;
+}
+
+/* Code — inline */
+.markdown-preview code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  background: var(--color-surface-raised);
+  padding: 0.15em 0.4em;
+  border-radius: 0.25rem;
+}
+
+/* Code — blocks */
+.markdown-preview pre {
+  background: var(--color-surface-raised);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  border: 1px solid var(--color-border-subtle);
+}
+
+.markdown-preview pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Tables */
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.8rem;
+}
+
+.markdown-preview th {
+  text-align: left;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+}
+
+.markdown-preview td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border-subtle);
+}
+
+/* Images */
+.markdown-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+/* Task lists (GFM) */
+.markdown-preview input[type="checkbox"] {
+  margin-right: 0.5rem;
+}

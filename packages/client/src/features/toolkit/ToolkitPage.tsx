@@ -161,7 +161,7 @@ export function ToolkitPage() {
         <Layers size={22} className="text-[var(--color-accent)]" />
         <div>
           <h1 className="text-2xl font-extrabold">Toolkit</h1>
-          <p className="text-sm text-[var(--color-muted)]">Everything invocable — agents, skills, and workflows in one view</p>
+          <p className="text-sm text-[var(--color-muted)]">Browse all agents, skills, workflows, and teams across your installed modules.</p>
         </div>
       </div>
 

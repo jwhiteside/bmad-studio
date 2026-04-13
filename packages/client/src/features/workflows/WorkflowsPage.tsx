@@ -181,7 +181,8 @@ export function WorkflowsPage() {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Workflows</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Workflows</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Structured sequences of steps that define how agents deliver work across BMAD phases.</p>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div
@@ -197,7 +198,8 @@ export function WorkflowsPage() {
   if (!workflows || workflows.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Workflows</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Workflows</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Structured sequences of steps that define how agents deliver work across BMAD phases.</p>
         <EmptyState
           icon={GitBranch}
           title="No workflows found"

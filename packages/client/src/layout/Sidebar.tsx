@@ -34,13 +34,21 @@ type NavGroup = { label: string; icon: typeof Users; items: NavItem[] }
 
 const topItems: NavItem[] = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
-  { to: '/outputs', label: 'Outputs', icon: FileOutput },
 ]
+
+const outputsGroup: NavGroup = {
+  label: 'Outputs',
+  icon: FileOutput,
+  items: [
+    { to: '/outputs', label: 'Browse All', icon: FileOutput },
+  ],
+}
 
 const toolkitGroup: NavGroup = {
   label: 'Toolkit',
   icon: Layers,
   items: [
+    { to: '/toolkit', label: 'View All', icon: Layers },
     { to: '/agents', label: 'Agents', icon: Users, badgeKey: 'agents' },
     { to: '/commands', label: 'Agent Triggers', icon: BookOpen },
     { to: '/teams', label: 'Teams', icon: UsersRound, badgeKey: 'teams' },
@@ -53,15 +61,12 @@ const settingsGroup: NavGroup = {
   label: 'Settings',
   icon: Settings,
   items: [
+    { to: '/settings', label: 'Preferences', icon: Settings },
     { to: '/modules', label: 'Modules', icon: Package, badgeKey: 'modules' },
     { to: '/connections', label: 'IDE Connections', icon: Plug, badgeKey: 'connections' },
-    { to: '/settings', label: 'Preferences', icon: Settings },
+    { to: '/files', label: 'All Files', icon: FolderTree },
   ],
 }
-
-const bottomItems: NavItem[] = [
-  { to: '/files', label: 'All Files', icon: FolderTree },
-]
 
 function NavItemComponent({
   to,
@@ -292,15 +297,13 @@ export function Sidebar() {
         ))}
 
         <div className="my-2 border-t border-[var(--color-border-subtle)]" />
+        <NavGroupComponent group={outputsGroup} badgeCounts={badgeCounts} />
+
+        <div className="my-2 border-t border-[var(--color-border-subtle)]" />
         <NavGroupComponent group={toolkitGroup} badgeCounts={badgeCounts} />
 
         <div className="my-2 border-t border-[var(--color-border-subtle)]" />
         <NavGroupComponent group={settingsGroup} badgeCounts={badgeCounts} />
-
-        <div className="my-2 border-t border-[var(--color-border-subtle)]" />
-        {bottomItems.map((item) => (
-          <NavItemComponent key={item.to} {...item} />
-        ))}
       </nav>
 
       <div className="px-3 py-3 border-t border-[var(--color-border-subtle)] space-y-1">

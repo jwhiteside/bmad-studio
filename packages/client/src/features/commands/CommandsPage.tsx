@@ -91,7 +91,8 @@ export function CommandsPage() {
   if (loading) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Agent Triggers</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Agent Triggers</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Short codes used within active agent sessions to invoke workflows and actions.</p>
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-12 rounded-lg bg-[var(--color-surface-raised)] animate-pulse" />
@@ -104,7 +105,8 @@ export function CommandsPage() {
   if (commands.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Agent Triggers</h1>
+        <h1 className="text-2xl font-extrabold mb-2">Agent Triggers</h1>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Short codes used within active agent sessions to invoke workflows and actions.</p>
         <EmptyState
           icon={BookOpen}
           title="No agent triggers found"
@@ -166,7 +168,7 @@ export function CommandsPage() {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-4 flex-wrap mb-2">
           <h1 className="text-2xl font-extrabold shrink-0">Agent Triggers ({commands.length})</h1>
 
           {/* Module tabs */}
@@ -215,6 +217,7 @@ export function CommandsPage() {
             </div>
           </div>
         </div>
+        <p className="text-sm text-[var(--color-muted)] mb-6">Short codes used within active agent sessions to invoke workflows and actions.</p>
 
         {/* Phase tabs */}
         <div className="flex gap-1 flex-wrap mt-4">
