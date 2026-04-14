@@ -269,8 +269,27 @@ export function parseWorkflow(dirPath: string): ParseResult<Workflow> {
     const titleMatch = body.match(/^#\s+(.+)$/m)
     const name = titleMatch ? titleMatch[1].trim() : path.basename(dirPath)
 
-    const descMatch = body.match(/^\*\*Goal:\*\*\s*(.+)$/m)
-    const description = descMatch ? descMatch[1].trim() : ''
+    // Accept both `**Goal:**` and `**Goal**:` variants; fall back to workflow.md
+    // frontmatter, then to sibling SKILL.md frontmatter (the convention used by
+    // dept-* modules).
+    const descMatch = body.match(/^\*\*Goal\*?\*?:\*?\*?\s*(.+)$/m)
+    let description = descMatch ? descMatch[1].trim() : ''
+    if (!description && typeof frontmatter.description === 'string') {
+      description = frontmatter.description.trim()
+    }
+    if (!description) {
+      const skillPath = path.join(dirPath, 'SKILL.md')
+      if (fs.existsSync(skillPath)) {
+        try {
+          const { data: skillFm } = matter(fs.readFileSync(skillPath, 'utf-8'))
+          if (typeof skillFm.description === 'string') {
+            description = skillFm.description.trim()
+          }
+        } catch {
+          // fall through with empty description
+        }
+      }
+    }
 
     const discovered = discoverStepFiles(dirPath)
 
