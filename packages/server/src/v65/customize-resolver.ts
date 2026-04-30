@@ -11,7 +11,11 @@
  *   - Plain array — concatenate: [...base, ...override]
  */
 
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { parse } from 'smol-toml'
 import type { LayerOrigin, Resolved } from '@bmad-studio/shared'
+import { ManifestMissingError, ManifestParseError } from '../core/errors.js'
 
 export type TomlValue = string | number | boolean | TomlValue[] | TomlObject
 export type TomlObject = { [key: string]: TomlValue }
@@ -232,4 +236,92 @@ export function resolveLayered<T extends TomlObject>(
     return { merged: result as T, provenance: prov }
   }
   return result as T
+}
+
+// ---------------------------------------------------------------------------
+// resolveSkillCustomization
+// ---------------------------------------------------------------------------
+
+export interface SkillCustomizationOptions {
+  provenance?: boolean
+}
+
+/**
+ * Reads a single TOML layer file from disk. Returns parsed object, or `{}`
+ * if the file does not exist (for optional layers).
+ *
+ * @throws ManifestParseError when the file exists but cannot be parsed.
+ */
+function readTomlLayer(filePath: string, required: boolean): TomlObject {
+  let raw: string
+  try {
+    raw = fs.readFileSync(filePath, 'utf8')
+  } catch (err: unknown) {
+    if (!required && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return {}
+    }
+    if (required && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new ManifestMissingError(
+        `Base customize.toml not found at: ${filePath}`,
+        { path: filePath },
+      )
+    }
+    throw err
+  }
+
+  try {
+    return parse(raw) as TomlObject
+  } catch (cause: unknown) {
+    const msg = cause instanceof Error ? cause.message : String(cause)
+    throw new ManifestParseError(`Failed to parse TOML at ${filePath}: ${msg}`, {
+      path: filePath,
+      cause,
+    })
+  }
+}
+
+/**
+ * Reads the three per-skill TOML layers for `skillPath` and folds them
+ * using `resolveLayered`. Returns the merged object, or `Resolved<T>` when
+ * `options.provenance` is true.
+ *
+ * Layer order (lowest → highest priority):
+ *   1. <skillPath>/customize.toml    — base (required)
+ *   2. <projectRoot>/_bmad/custom/<skillName>.toml  — team (optional)
+ *   3. <projectRoot>/_bmad/custom/<skillName>.user.toml — user (optional)
+ *
+ * @throws ManifestParseError when a present layer file cannot be parsed as TOML.
+ * @throws ManifestMissingError when <skillPath>/customize.toml is absent.
+ */
+export function resolveSkillCustomization(
+  skillPath: string,
+  projectRoot: string,
+  options: { provenance: true },
+): Resolved<TomlObject>
+export function resolveSkillCustomization(
+  skillPath: string,
+  projectRoot: string,
+  options?: SkillCustomizationOptions,
+): TomlObject
+export function resolveSkillCustomization(
+  skillPath: string,
+  projectRoot: string,
+  options?: SkillCustomizationOptions,
+): TomlObject | Resolved<TomlObject> {
+  const skillName = path.basename(skillPath)
+
+  const basePath = path.join(skillPath, 'customize.toml')
+  const teamPath = path.join(projectRoot, '_bmad', 'custom', `${skillName}.toml`)
+  const userPath = path.join(projectRoot, '_bmad', 'custom', `${skillName}.user.toml`)
+
+  const baseLayer = readTomlLayer(basePath, true)
+  const teamLayer = readTomlLayer(teamPath, false)
+  const userLayer = readTomlLayer(userPath, false)
+
+  const layers = [baseLayer, teamLayer, userLayer]
+
+  if (options?.provenance === true) {
+    return resolveLayered<TomlObject>(layers, { provenance: true })
+  }
+  return resolveLayered<TomlObject>(layers)
 }

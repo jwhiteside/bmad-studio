@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
 
 import {
   mergeScalar,
@@ -6,8 +9,10 @@ import {
   mergeKeyedArray,
   mergeArray,
   resolveLayered,
+  resolveSkillCustomization,
   type TomlObject,
 } from './customize-resolver.js'
+import { ManifestMissingError, ManifestParseError } from '../core/errors.js'
 
 // ---------------------------------------------------------------------------
 // mergeScalar
@@ -505,5 +510,208 @@ describe('resolveLayered (provenance mode)', () => {
     expect(provenance.b).toBe('user_base' as never)
     expect(provenance.c).toBe('team')
     expect(provenance.d).toBe('user')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolveSkillCustomization
+// ---------------------------------------------------------------------------
+
+/** Helper: create a temp dir and return its path. Cleaned up after test. */
+function makeTmpDir(): { dir: string; cleanup: () => void } {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bmad-skill-test-'))
+  return {
+    dir,
+    cleanup: () => fs.rmSync(dir, { recursive: true, force: true }),
+  }
+}
+
+/** Write a TOML file at `filePath`, creating intermediate dirs as needed. */
+function writeToml(filePath: string, content: string): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(filePath, content, 'utf8')
+}
+
+describe('resolveSkillCustomization', () => {
+  // 1. Base-only: only customize.toml present → result equals parsed base
+  it('base-only: result equals parsed base when no overrides exist', () => {
+    const { dir, cleanup } = makeTmpDir()
+    try {
+      const skillPath = path.join(dir, 'my-agent')
+      writeToml(path.join(skillPath, 'customize.toml'), `
+[agent]
+name = "Alice"
+icon = "🤖"
+principles = ["Think first"]
+`)
+      const projectRoot = path.join(dir, 'project')
+      fs.mkdirSync(path.join(projectRoot, '_bmad', 'custom'), { recursive: true })
+
+      const result = resolveSkillCustomization(skillPath, projectRoot)
+      const agent = result.agent as TomlObject
+      expect(agent.name).toBe('Alice')
+      expect(agent.icon).toBe('🤖')
+      expect(agent.principles).toEqual(['Think first'])
+    } finally {
+      cleanup()
+    }
+  })
+
+  // 2. Base + team override: team scalar overrides base scalar
+  it('base + team: team scalar overrides base scalar', () => {
+    const { dir, cleanup } = makeTmpDir()
+    try {
+      const skillPath = path.join(dir, 'my-agent')
+      writeToml(path.join(skillPath, 'customize.toml'), `
+[agent]
+name = "Alice"
+icon = "🤖"
+`)
+      const projectRoot = path.join(dir, 'project')
+      writeToml(path.join(projectRoot, '_bmad', 'custom', 'my-agent.toml'), `
+[agent]
+icon = "⚙️"
+`)
+
+      const result = resolveSkillCustomization(skillPath, projectRoot)
+      const agent = result.agent as TomlObject
+      expect(agent.name).toBe('Alice')    // preserved from base
+      expect(agent.icon).toBe('⚙️')      // overridden by team
+    } finally {
+      cleanup()
+    }
+  })
+
+  // 3. Base + team + user override: user wins over team
+  it('base + team + user: user wins over team', () => {
+    const { dir, cleanup } = makeTmpDir()
+    try {
+      const skillPath = path.join(dir, 'my-agent')
+      writeToml(path.join(skillPath, 'customize.toml'), `
+[agent]
+icon = "🤖"
+name = "Alice"
+`)
+      const projectRoot = path.join(dir, 'project')
+      writeToml(path.join(projectRoot, '_bmad', 'custom', 'my-agent.toml'), `
+[agent]
+icon = "⚙️"
+`)
+      writeToml(path.join(projectRoot, '_bmad', 'custom', 'my-agent.user.toml'), `
+[agent]
+icon = "🌟"
+`)
+
+      const result = resolveSkillCustomization(skillPath, projectRoot)
+      const agent = result.agent as TomlObject
+      expect(agent.icon).toBe('🌟')      // user wins
+      expect(agent.name).toBe('Alice')   // preserved from base
+    } finally {
+      cleanup()
+    }
+  })
+
+  // 4. Missing base: throws ManifestMissingError
+  it('missing base customize.toml throws ManifestMissingError', () => {
+    const { dir, cleanup } = makeTmpDir()
+    try {
+      const skillPath = path.join(dir, 'no-such-agent')
+      const projectRoot = path.join(dir, 'project')
+      fs.mkdirSync(path.join(projectRoot, '_bmad', 'custom'), { recursive: true })
+
+      expect(() => resolveSkillCustomization(skillPath, projectRoot)).toThrow(ManifestMissingError)
+    } finally {
+      cleanup()
+    }
+  })
+
+  // 5. Present but malformed layer: throws with path in message
+  it('malformed base TOML throws ManifestParseError with path in message', () => {
+    const { dir, cleanup } = makeTmpDir()
+    try {
+      const skillPath = path.join(dir, 'bad-agent')
+      writeToml(path.join(skillPath, 'customize.toml'), `
+[agent
+name = "broken
+`)
+      const projectRoot = path.join(dir, 'project')
+      fs.mkdirSync(path.join(projectRoot, '_bmad', 'custom'), { recursive: true })
+
+      expect(() => resolveSkillCustomization(skillPath, projectRoot)).toThrow(ManifestParseError)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('malformed optional team TOML throws ManifestParseError with path in message', () => {
+    const { dir, cleanup } = makeTmpDir()
+    try {
+      const skillPath = path.join(dir, 'my-agent')
+      writeToml(path.join(skillPath, 'customize.toml'), `
+[agent]
+name = "Alice"
+`)
+      const projectRoot = path.join(dir, 'project')
+      writeToml(path.join(projectRoot, '_bmad', 'custom', 'my-agent.toml'), `
+[agent
+broken = "yes
+`)
+
+      expect(() => resolveSkillCustomization(skillPath, projectRoot)).toThrow(ManifestParseError)
+    } finally {
+      cleanup()
+    }
+  })
+
+  // 6. options.provenance: true returns { merged, provenance } shape
+  it('options.provenance: true returns Resolved<T> shape', () => {
+    const { dir, cleanup } = makeTmpDir()
+    try {
+      const skillPath = path.join(dir, 'my-agent')
+      writeToml(path.join(skillPath, 'customize.toml'), `
+[agent]
+name = "Alice"
+icon = "🤖"
+`)
+      const projectRoot = path.join(dir, 'project')
+      writeToml(path.join(projectRoot, '_bmad', 'custom', 'my-agent.toml'), `
+[agent]
+icon = "⚙️"
+`)
+
+      const result = resolveSkillCustomization(skillPath, projectRoot, { provenance: true })
+      expect(result).toHaveProperty('merged')
+      expect(result).toHaveProperty('provenance')
+      const agent = (result.merged as TomlObject).agent as TomlObject
+      expect(agent.name).toBe('Alice')
+      expect(agent.icon).toBe('⚙️')
+      // Top-level provenance key 'agent' should exist (table deep-merged)
+      expect(result.provenance.agent).toBe('merged')
+    } finally {
+      cleanup()
+    }
+  })
+
+  // 7. Missing optional layers treated as {}: no error thrown
+  it('missing optional team and user layers are treated as {} — no error', () => {
+    const { dir, cleanup } = makeTmpDir()
+    try {
+      const skillPath = path.join(dir, 'my-agent')
+      writeToml(path.join(skillPath, 'customize.toml'), `
+[agent]
+name = "Alice"
+`)
+      // projectRoot exists but has no _bmad/custom/ directory at all
+      const projectRoot = path.join(dir, 'project')
+      fs.mkdirSync(projectRoot, { recursive: true })
+
+      // Should not throw even though team/user files don't exist
+      expect(() => resolveSkillCustomization(skillPath, projectRoot)).not.toThrow()
+      const result = resolveSkillCustomization(skillPath, projectRoot)
+      const agent = result.agent as TomlObject
+      expect(agent.name).toBe('Alice')
+    } finally {
+      cleanup()
+    }
   })
 })
