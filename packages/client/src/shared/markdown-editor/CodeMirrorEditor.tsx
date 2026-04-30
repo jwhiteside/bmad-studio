@@ -9,7 +9,7 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 
-export type EditorLanguage = 'markdown' | 'yaml' | 'html' | 'javascript' | 'plaintext'
+export type EditorLanguage = 'markdown' | 'yaml' | 'html' | 'javascript' | 'plaintext' | 'toml'
 
 type CodeMirrorEditorProps = {
   content: string
@@ -31,6 +31,8 @@ function getLanguageExtension(lang: EditorLanguage): Extension | null {
       return html()
     case 'javascript':
       return javascript()
+    case 'toml':
+      return yaml() // uses YAML grammar as TOML fallback per arch decision (Story 33.2)
     case 'plaintext':
       return null
   }
@@ -54,6 +56,8 @@ export function getLanguageForFile(filePath: string): EditorLanguage {
     case 'tsx':
     case 'json':
       return 'javascript'
+    case 'toml':
+      return 'toml'
     default:
       return 'plaintext'
   }
