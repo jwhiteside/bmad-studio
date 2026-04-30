@@ -8,6 +8,9 @@ export type {
   Workflow,
   WorkflowStep,
   WorkflowListItem,
+  HookEntry,
+  WorkflowHookSurface,
+  WorkflowHooks,
 } from './workflows.js'
 export { WORKFLOW_TYPE_DEFINITIONS } from './workflows.js'
 export type {

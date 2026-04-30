@@ -72,3 +72,22 @@ export type WorkflowListItem = {
   type?: WorkflowType
   phase?: string
 }
+
+/**
+ * v6.5 Hook Palette types (Epic 35).
+ * Hooks are user-customisable shell commands that run at workflow lifecycle points.
+ * See ADR-9: Hook Serialization — entries are joined with " && " into a scalar
+ * string in customize.toml; sidecar comments track per-entry disabled state.
+ */
+export type HookEntry = { command: string; disabled?: boolean }
+
+export type WorkflowHookSurface =
+  | 'activationStepsPrepend'
+  | 'activationStepsAppend'
+  | 'onComplete'
+
+export type WorkflowHooks = {
+  activationStepsPrepend: HookEntry[]
+  activationStepsAppend: HookEntry[]
+  onComplete: HookEntry[]
+}
