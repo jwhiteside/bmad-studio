@@ -6,6 +6,7 @@ import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
 import { SlideOver } from '../../shared/SlideOver.js'
 import { FilepathLink } from '../../shared/FilepathLink.js'
 import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
+import { CustomizeEditor } from '../customize/CustomizeEditor.js'
 
 type SkillDetailSlideOverProps = {
   skillId: string
@@ -107,6 +108,7 @@ function ReferencedFile({
 
 export function SkillDetailSlideOver({ skillId, onClose }: SkillDetailSlideOverProps) {
   const { data: skill, isLoading } = useSkillDetail(skillId)
+  const [activeTab, setActiveTab] = useState<'content' | 'customize'>('content')
 
   const skillContent = skill?.content ?? ''
   const fileReferences = useMemo(() => {
@@ -129,61 +131,89 @@ export function SkillDetailSlideOver({ skillId, onClose }: SkillDetailSlideOverP
             <p className="text-sm text-[var(--color-muted)]">{skill.description}</p>
           </div>
 
-          <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2">How to Invoke</h3>
-            <div className="flex items-center gap-2 flex-wrap">
-              <code className="text-sm font-[var(--font-mono)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-2 py-1 rounded text-[var(--color-accent)]">
-                /{skill.id}
-              </code>
-              <span className="text-xs text-[var(--color-muted)]">in Claude Code or your configured IDE</span>
-            </div>
+          <div role="tablist" className="flex border-b border-[var(--color-border-subtle)] mb-4">
+            {(['content', 'customize'] as const).map((tab) => (
+              <button
+                key={tab}
+                role="tab"
+                aria-selected={activeTab === tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${
+                  activeTab === tab
+                    ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
+                    : 'border-transparent text-[var(--color-muted)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
 
-          {skill.bestFor && skill.bestFor.length > 0 && (
-            <div>
-              <h3 className="text-sm font-bold mb-2">Best for</h3>
-              <div className="flex flex-wrap gap-1">
-                {skill.bestFor.map((role) => (
-                  <span
-                    key={role}
-                    className="px-2 py-0.5 text-xs rounded-full bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]"
-                  >
-                    {role}
-                  </span>
-                ))}
+          {activeTab === 'content' && (
+            <>
+              <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2">How to Invoke</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <code className="text-sm font-[var(--font-mono)] bg-[var(--color-bg)] border border-[var(--color-border-subtle)] px-2 py-1 rounded text-[var(--color-accent)]">
+                    /{skill.id}
+                  </code>
+                  <span className="text-xs text-[var(--color-muted)]">in Claude Code or your configured IDE</span>
+                </div>
               </div>
-            </div>
-          )}
 
-          <div>
-            <h3 className="text-sm font-bold mb-2">Content</h3>
-            <div className="h-64 rounded-lg overflow-hidden border border-[var(--color-border-subtle)]">
-              <MarkdownEditor
-                content={skill.content}
-                filePath={skill.filePath}
-                onChange={() => {}}
-                readOnly
-                hideModeTabs
-              />
-            </div>
-          </div>
+              {skill.bestFor && skill.bestFor.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold mb-2">Best for</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {skill.bestFor.map((role) => (
+                      <span
+                        key={role}
+                        className="px-2 py-0.5 text-xs rounded-full bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]"
+                      >
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {fileReferences.length > 0 && (
-            <div>
-              <h3 className="text-sm font-bold mb-2">Referenced Files</h3>
-              <div className="space-y-2">
-                {fileReferences.map((ref) => (
-                  <ReferencedFile
-                    key={ref}
-                    reference={ref}
-                    skillFilePath={skill.filePath}
+              <div>
+                <h3 className="text-sm font-bold mb-2">Content</h3>
+                <div className="h-64 rounded-lg overflow-hidden border border-[var(--color-border-subtle)]">
+                  <MarkdownEditor
+                    content={skill.content}
+                    filePath={skill.filePath}
+                    onChange={() => {}}
+                    readOnly
+                    hideModeTabs
                   />
-                ))}
+                </div>
               </div>
-            </div>
+
+              {fileReferences.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold mb-2">Referenced Files</h3>
+                  <div className="space-y-2">
+                    {fileReferences.map((ref) => (
+                      <ReferencedFile
+                        key={ref}
+                        reference={ref}
+                        skillFilePath={skill.filePath}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <FilepathLink path={skill.filePath} showIcon />
+            </>
           )}
 
-          <FilepathLink path={skill.filePath} showIcon />
+          {activeTab === 'customize' && (
+            <div className="h-[600px] xl:h-full">
+              <CustomizeEditor skillId={skill.id} />
+            </div>
+          )}
         </>
       )}
     </SlideOver>
