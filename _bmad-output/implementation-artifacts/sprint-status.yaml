@@ -340,21 +340,23 @@ development_status:
   epic-34-retrospective: optional
 
   # Epic 35: Hooks palette MVP (Growth)
-  epic-35: backlog
-  35-1-hook-template-interface-and-registry: backlog
-  35-2-hooks-tab-ui-and-disable-toggle: backlog
-  35-3-template-palette-and-parameter-form: backlog
-  35-4-hooks-get-endpoint: backlog
-  35-5-hooks-put-endpoint-and-script-template-copy: backlog
-  35-6-templates-raw-shell-slack-git-tag: backlog
-  35-7-templates-run-tests-llm-agent-ingest: backlog
+  # PR open: feature/v65-e35-hooks-palette — all stories done
+  epic-35: in-progress
+  35-1-hook-template-interface-and-registry: review
+  35-2-hooks-tab-ui-and-disable-toggle: review
+  35-3-template-palette-and-parameter-form: review
+  35-4-hooks-get-endpoint: review
+  35-5-hooks-put-endpoint-and-script-template-copy: review
+  35-6-templates-raw-shell-slack-git-tag: review
+  35-7-templates-run-tests-llm-agent-ingest: review
   epic-35-retrospective: optional
 
   # Epic 36: Drift detector (Growth)
-  epic-36: backlog
-  36-1-drift-detector-sha256-scan: backlog
-  36-2-drift-get-endpoint-and-ws-events: backlog
-  36-3-drift-badge-and-list-view: backlog
-  36-4-drift-conversion-payload-and-token-cache: backlog
-  36-5-drift-convert-flow-and-reset: backlog
+  # PR open: feature/v65-e36-drift-detector — all stories done
+  epic-36: in-progress
+  36-1-drift-detector-sha256-scan: review
+  36-2-drift-get-endpoint-and-ws-events: review
+  36-3-drift-badge-and-list-view: review
+  36-4-drift-conversion-payload-and-token-cache: review
+  36-5-drift-convert-flow-and-reset: review
   epic-36-retrospective: optional
