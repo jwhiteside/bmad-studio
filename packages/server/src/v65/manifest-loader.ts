@@ -12,8 +12,12 @@
  * All three throw `ManifestParseError` (422) when a present file is malformed,
  * and `loadModules`/`loadSkillIndex` throw `ManifestMissingError` (422) when
  * their required file is absent.
+ *
+ * Story 31.3 adds a two-tier cache (in-memory + on-disk) keyed on the SHA-256
+ * of `files-manifest.csv`. Use `loadManifestCached` as the entry point.
  */
 
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
@@ -228,4 +232,132 @@ export function loadBmadHelp(projectRoot: string): BmadHelpEntry[] {
     }
     return entry
   })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 31.3 — Two-tier cache keyed on SHA-256 of `files-manifest.csv`
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FILES_MANIFEST_CSV = 'files-manifest.csv'
+const CACHE_REL_PATH = path.join('_bmad-output', '.cache', 'v65-index.json')
+
+/**
+ * Fully-parsed v6.5 manifest data for a project. Serves as the in-memory and
+ * on-disk cache payload (Story 31.3).
+ */
+export type CacheEntry = {
+  /** SHA-256 hex digest of `_bmad/_config/files-manifest.csv` when the cache was built. */
+  key: string
+  modules: ModuleManifestFile
+  skills: SkillManifestEntry[]
+  help: BmadHelpEntry[]
+}
+
+/** Module-level in-memory cache: one entry per projectRoot. */
+const memoryCache = new Map<string, CacheEntry>()
+
+/**
+ * Compute SHA-256 hex digest of `files-manifest.csv` content.
+ * Sync is fine — called only on the cold path.
+ * Returns `null` when the file is absent (caching skipped in that case).
+ */
+function computeFilesManifestHash(projectRoot: string): string | null {
+  const filePath = configPath(projectRoot, FILES_MANIFEST_CSV)
+  if (!fs.existsSync(filePath)) return null
+  const content = fs.readFileSync(filePath)
+  return crypto.createHash('sha256').update(content).digest('hex')
+}
+
+/** Path to the on-disk JSON cache file for a given project root. */
+function diskCachePath(projectRoot: string): string {
+  return path.join(projectRoot, CACHE_REL_PATH)
+}
+
+/** Try to read and parse the on-disk cache. Returns null on any error. */
+function readDiskCache(projectRoot: string): CacheEntry | null {
+  try {
+    const raw = fs.readFileSync(diskCachePath(projectRoot), 'utf-8')
+    return JSON.parse(raw) as CacheEntry
+  } catch {
+    return null
+  }
+}
+
+/** Persist a cache entry to disk, creating parent directories as needed. */
+function writeDiskCache(projectRoot: string, entry: CacheEntry): void {
+  try {
+    const cachePath = diskCachePath(projectRoot)
+    fs.mkdirSync(path.dirname(cachePath), { recursive: true })
+    fs.writeFileSync(cachePath, JSON.stringify(entry), 'utf-8')
+  } catch {
+    // Non-fatal: disk write failure just means cold parse next restart.
+  }
+}
+
+/**
+ * Load all three v6.5 manifests with a two-tier cache.
+ *
+ * Cache key = SHA-256 hex of `_bmad/_config/files-manifest.csv`.
+ *
+ * Tiers:
+ *  1. In-memory `Map<projectRoot, CacheEntry>` — serves subsequent requests
+ *     in the same process in <5 ms.
+ *  2. On-disk `_bmad-output/.cache/v65-index.json` — hydrates the in-memory
+ *     cache on server restart when the hash matches (target <50 ms).
+ *
+ * When `files-manifest.csv` is absent the cache is bypassed and a fresh parse
+ * is returned every time (graceful degradation).
+ *
+ * Called by `ModuleLoader.load()` for v6.5 (Story 31.4) and by the chokidar
+ * watcher (Story 31.5) via `invalidateCache`.
+ */
+export function loadManifestCached(projectRoot: string): CacheEntry {
+  const hash = computeFilesManifestHash(projectRoot)
+
+  // 1. In-memory hit — fastest path.
+  if (hash !== null) {
+    const mem = memoryCache.get(projectRoot)
+    if (mem && mem.key === hash) {
+      return mem
+    }
+  }
+
+  // 2. Disk hydration — check after a server restart.
+  if (hash !== null) {
+    const disk = readDiskCache(projectRoot)
+    if (disk && disk.key === hash) {
+      memoryCache.set(projectRoot, disk)
+      return disk
+    }
+  }
+
+  // 3. Cold parse — compute everything from scratch.
+  const modules = loadModules(projectRoot)
+  const skills = loadSkillIndex(projectRoot)
+  const help = loadBmadHelp(projectRoot)
+
+  const entry: CacheEntry = {
+    key: hash ?? '',
+    modules,
+    skills,
+    help,
+  }
+
+  if (hash !== null) {
+    memoryCache.set(projectRoot, entry)
+    writeDiskCache(projectRoot, entry)
+  }
+
+  return entry
+}
+
+/**
+ * Evict the in-memory cache entry for `projectRoot`.
+ *
+ * Called by the chokidar watcher (Story 31.5) when any `_bmad/_config`
+ * manifest file changes. The next `loadManifestCached` call will re-read
+ * from disk or do a cold parse.
+ */
+export function invalidateCache(projectRoot: string): void {
+  memoryCache.delete(projectRoot)
 }

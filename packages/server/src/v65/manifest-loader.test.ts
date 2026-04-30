@@ -2,8 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import crypto from 'node:crypto'
 
-import { loadModules, loadSkillIndex, loadBmadHelp } from './manifest-loader.js'
+import {
+  loadModules,
+  loadSkillIndex,
+  loadBmadHelp,
+  loadManifestCached,
+  invalidateCache,
+} from './manifest-loader.js'
 import { ManifestMissingError, ManifestParseError } from '../core/errors.js'
 
 const CONFIG_REL = path.join('_bmad', '_config')
@@ -226,5 +233,165 @@ describe('v65/manifest-loader', () => {
         }
       },
     )
+  })
+
+  describe('caching (Story 31.3)', () => {
+    /** Write a minimal but valid v6.5 project structure into tmpDir. */
+    function writeMinimalProject(dir: string): void {
+      const configDir = path.join(dir, '_bmad', '_config')
+      fs.mkdirSync(configDir, { recursive: true })
+
+      // manifest.yaml
+      fs.writeFileSync(
+        path.join(configDir, 'manifest.yaml'),
+        [
+          'installation:',
+          '  version: "6.5.0"',
+          '  installDate: "2026-01-01T00:00:00.000Z"',
+          '  lastUpdated: "2026-01-01T00:00:00.000Z"',
+          'modules:',
+          '  - name: core',
+          '    version: "6.5.0"',
+          '    installDate: "2026-01-01T00:00:00.000Z"',
+          '    lastUpdated: "2026-01-01T00:00:00.000Z"',
+          '    source: built-in',
+          '    npmPackage: null',
+          '    repoUrl: null',
+        ].join('\n'),
+      )
+
+      // skill-manifest.csv (required)
+      fs.writeFileSync(
+        path.join(configDir, 'skill-manifest.csv'),
+        'canonicalId,name,description,module,path\ntest-skill,Test Skill,A test skill,core,_bmad/core/test-skill/SKILL.md\n',
+      )
+
+      // files-manifest.csv (used as cache key)
+      const filesManifestContent = 'type,name,module,path,hash\n"yaml","manifest","_config","_config/manifest.yaml","abc123"\n'
+      fs.writeFileSync(path.join(configDir, 'files-manifest.csv'), filesManifestContent)
+    }
+
+    it('cold parse writes to disk (AC: first request computes + persists)', () => {
+      writeMinimalProject(tmpDir)
+
+      // Ensure no stale in-memory entry
+      invalidateCache(tmpDir)
+
+      const entry = loadManifestCached(tmpDir)
+
+      expect(entry.modules.installation.version).toBe('6.5.0')
+      expect(entry.skills.length).toBe(1)
+
+      // Disk cache should have been written
+      const cacheFile = path.join(tmpDir, '_bmad-output', '.cache', 'v65-index.json')
+      expect(fs.existsSync(cacheFile)).toBe(true)
+
+      const diskEntry = JSON.parse(fs.readFileSync(cacheFile, 'utf-8')) as typeof entry
+      expect(diskEntry.key).toBe(entry.key)
+      expect(diskEntry.modules.installation.version).toBe('6.5.0')
+    })
+
+    it('restart with matching hash hydrates from disk (AC: <50 ms from disk)', () => {
+      writeMinimalProject(tmpDir)
+
+      // First call writes to disk
+      invalidateCache(tmpDir)
+      loadManifestCached(tmpDir)
+
+      // Evict memory cache to simulate restart
+      invalidateCache(tmpDir)
+
+      const start = performance.now()
+      const entry = loadManifestCached(tmpDir)
+      const elapsed = performance.now() - start
+
+      expect(entry.modules.installation.version).toBe('6.5.0')
+      expect(elapsed).toBeLessThan(50)
+    })
+
+    it('restart with changed hash re-parses cold (AC: mismatched hash invalidates)', () => {
+      writeMinimalProject(tmpDir)
+
+      // First cold parse — writes disk cache
+      invalidateCache(tmpDir)
+      const first = loadManifestCached(tmpDir)
+
+      // Modify files-manifest.csv to change the hash
+      const configDir = path.join(tmpDir, '_bmad', '_config')
+      fs.writeFileSync(
+        path.join(configDir, 'files-manifest.csv'),
+        'type,name,module,path,hash\n"yaml","manifest","_config","_config/manifest.yaml","newHash999"\n',
+      )
+
+      // Also add a new skill so we can detect re-parse
+      fs.writeFileSync(
+        path.join(configDir, 'skill-manifest.csv'),
+        'canonicalId,name,description,module,path\ntest-skill,Test Skill,A test skill,core,_bmad/core/test-skill/SKILL.md\nnew-skill,New Skill,A new skill,core,_bmad/core/new-skill/SKILL.md\n',
+      )
+
+      // Evict memory to simulate restart
+      invalidateCache(tmpDir)
+
+      const second = loadManifestCached(tmpDir)
+
+      // The hash should have changed and the new skill should be included
+      expect(second.key).not.toBe(first.key)
+      expect(second.skills.length).toBe(2)
+    })
+
+    it('in-memory hit is served without re-reading disk (<5 ms)', () => {
+      writeMinimalProject(tmpDir)
+
+      // Warm the cache
+      invalidateCache(tmpDir)
+      loadManifestCached(tmpDir)
+
+      // Second call should be in-memory
+      const start = performance.now()
+      loadManifestCached(tmpDir)
+      const elapsed = performance.now() - start
+
+      expect(elapsed).toBeLessThan(5)
+    })
+
+    it('skips caching when files-manifest.csv is absent', () => {
+      writeMinimalProject(tmpDir)
+      // Remove files-manifest.csv
+      fs.unlinkSync(path.join(tmpDir, '_bmad', '_config', 'files-manifest.csv'))
+
+      invalidateCache(tmpDir)
+      const entry = loadManifestCached(tmpDir)
+
+      // key should be empty string (no hash)
+      expect(entry.key).toBe('')
+      expect(entry.modules.installation.version).toBe('6.5.0')
+
+      // No disk cache should be written
+      const cacheFile = path.join(tmpDir, '_bmad-output', '.cache', 'v65-index.json')
+      expect(fs.existsSync(cacheFile)).toBe(false)
+    })
+
+    it('invalidateCache evicts the in-memory entry', () => {
+      writeMinimalProject(tmpDir)
+
+      invalidateCache(tmpDir)
+      loadManifestCached(tmpDir)
+
+      // Modify skill list before evicting
+      fs.writeFileSync(
+        path.join(tmpDir, '_bmad', '_config', 'skill-manifest.csv'),
+        'canonicalId,name,description,module,path\ntest-skill,Test Skill,A test skill,core,_bmad/core/test-skill/SKILL.md\nextra-skill,Extra Skill,Extra,core,_bmad/core/extra-skill/SKILL.md\n',
+      )
+      // Update files-manifest.csv so the new hash triggers re-parse
+      fs.writeFileSync(
+        path.join(tmpDir, '_bmad', '_config', 'files-manifest.csv'),
+        'type,name,module,path,hash\n"yaml","manifest","_config","_config/manifest.yaml","changedHash"\n',
+      )
+
+      invalidateCache(tmpDir)
+
+      const entry = loadManifestCached(tmpDir)
+      expect(entry.skills.length).toBe(2)
+    })
   })
 })
