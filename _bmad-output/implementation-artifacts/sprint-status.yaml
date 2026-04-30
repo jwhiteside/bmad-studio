@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-18
-last_updated: 2026-04-30  # Cycle 5 — E31/E32/E34-foundations in review; E33 in-progress
+last_updated: 2026-04-30  # Cycle 5 — E31/E32/E33/E34-foundations all in review (PRs #7–#10)
 project: BMAD Studio
 project_key: NOKEY
 tracking_system: file-system
@@ -320,12 +320,12 @@ development_status:
   epic-32-retrospective: optional
 
   # Epic 33: Customize editor — read-only
-  # Branch: feature/v65-e33-customize-editor-ro
+  # PR #10 open: feature/v65-e33-customize-editor-ro — all stories done
   epic-33: in-progress
-  33-1-customize-get-endpoint: in-progress
-  33-2-layer-pane-codemirror-toml: backlog
-  33-3-merged-pane-with-provenance-hint: backlog
-  33-4-customize-tab-and-editor-parent: backlog
+  33-1-customize-get-endpoint: review
+  33-2-layer-pane-codemirror-toml: review
+  33-3-merged-pane-with-provenance-hint: review
+  33-4-customize-tab-and-editor-parent: review
   epic-33-retrospective: optional
 
   # Epic 34: Customize editor — write
