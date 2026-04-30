@@ -142,4 +142,83 @@ Set up the testing environment and validate prerequisites.
 
     await app.close()
   })
+
+  // -- Story 35.4 — GET /api/workflows/:id/hooks ----------------------------
+
+  it('GET /api/workflows/:id/hooks returns empty arrays when no customize.toml exists', async () => {
+    const app = await createTestApp()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/workflows/test-workflow/hooks',
+    })
+    expect(response.statusCode).toBe(200)
+    const hooks = JSON.parse(response.body)
+    expect(hooks).toEqual({
+      activationStepsPrepend: [],
+      activationStepsAppend: [],
+      onComplete: [],
+    })
+
+    await app.close()
+  })
+
+  it('GET /api/workflows/:id/hooks parses on_complete scalar split by " && "', async () => {
+    const app = await createTestApp()
+
+    const customDir = path.join(tmpDir, '_bmad', 'custom')
+    fs.mkdirSync(customDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(customDir, 'test-workflow.toml'),
+      'on_complete = "cmd1 && cmd2"\n',
+    )
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/workflows/test-workflow/hooks',
+    })
+    expect(response.statusCode).toBe(200)
+    const hooks = JSON.parse(response.body)
+    expect(hooks.onComplete).toEqual([{ command: 'cmd1' }, { command: 'cmd2' }])
+    expect(hooks.activationStepsPrepend).toEqual([])
+    expect(hooks.activationStepsAppend).toEqual([])
+
+    await app.close()
+  })
+
+  it('GET /api/workflows/:id/hooks returns 404 for unknown workflow', async () => {
+    const app = await createTestApp()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/workflows/does-not-exist/hooks',
+    })
+    expect(response.statusCode).toBe(404)
+
+    await app.close()
+  })
+
+  it('GET /api/workflows/:id/hooks returns correct shape when only one surface is populated', async () => {
+    const app = await createTestApp()
+
+    const customDir = path.join(tmpDir, '_bmad', 'custom')
+    fs.mkdirSync(customDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(customDir, 'test-workflow.toml'),
+      'activation_steps_prepend = "echo before"\n',
+    )
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/workflows/test-workflow/hooks',
+    })
+    expect(response.statusCode).toBe(200)
+    const hooks = JSON.parse(response.body)
+    expect(hooks.activationStepsPrepend).toEqual([{ command: 'echo before' }])
+    expect(hooks.activationStepsAppend).toEqual([])
+    expect(hooks.onComplete).toEqual([])
+
+    await app.close()
+  })
+
 })

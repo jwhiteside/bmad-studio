@@ -1,11 +1,70 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { parse as parseToml } from 'smol-toml'
 import type { FastifyInstance } from 'fastify'
-import type { WorkflowListItem } from '@bmad-studio/shared'
+import type {
+  HookEntry,
+  WorkflowHooks,
+  WorkflowHookSurface,
+  WorkflowListItem,
+} from '@bmad-studio/shared'
 
 import { NotFoundError, ValidationError } from '../core/errors.js'
 import { writeFile } from '../core/write-service.js'
+
+/**
+ * Maps the camelCase WorkflowHookSurface used in the API to the snake_case
+ * TOML key written into customize.toml.
+ */
+const SURFACE_TO_TOML_KEY: Record<WorkflowHookSurface, string> = {
+  activationStepsPrepend: 'activation_steps_prepend',
+  activationStepsAppend: 'activation_steps_append',
+  onComplete: 'on_complete',
+}
+
+/**
+ * Derives the project root from a workflow's absolute file path.
+ * Workflow paths are like: /absolute/path/to/project/_bmad/<module>/workflows/<wf>/workflow.md
+ * We split on '/_bmad/' and take the left part.
+ */
+function deriveProjectRoot(filePath: string): string {
+  const idx = filePath.indexOf('/_bmad/')
+  if (idx === -1) throw new Error(`Cannot derive project root from: ${filePath}`)
+  return filePath.slice(0, idx)
+}
+
+function getCustomizePath(projectRoot: string, workflowId: string): string {
+  return path.join(projectRoot, '_bmad', 'custom', `${workflowId}.toml`)
+}
+
+/**
+ * Parses a single hook surface value from a parsed TOML object into HookEntry[].
+ * Per ADR-9, the value may be:
+ *  - undefined → []
+ *  - a scalar string "cmd1 && cmd2" → split on ' && '
+ *  - an array of strings → mapped 1:1
+ * Disabled state from sidecar comments is a future enhancement; for now all
+ * entries are treated as enabled.
+ */
+function parseSurfaceValue(value: unknown): HookEntry[] {
+  if (value === undefined || value === null) return []
+  if (typeof value === 'string') {
+    if (value.trim() === '') return []
+    return value
+      .split(' && ')
+      .map((cmd) => cmd.trim())
+      .filter((cmd) => cmd.length > 0)
+      .map((command) => ({ command }))
+  }
+  if (Array.isArray(value)) {
+    return value
+      .filter((v): v is string => typeof v === 'string')
+      .map((command) => ({ command }))
+  }
+  return []
+}
+
 
 function toKebab(s: string): string {
   return s
@@ -238,6 +297,44 @@ export async function workflowsPlugin(app: FastifyInstance) {
       }
 
       return { ok: true, filePath: result.filePath }
+    },
+  )
+
+  // Get workflow hooks (Story 35.4)
+  app.get<{ Params: { id: string } }>(
+    '/api/workflows/:id/hooks',
+    async (request): Promise<WorkflowHooks> => {
+      if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+      const index = app.fileStore.getIndex()
+      const workflow = index.workflows.find((w) => w.id === request.params.id)
+      if (!workflow) throw new NotFoundError(`Workflow "${request.params.id}" not found`)
+
+      const projectRoot = deriveProjectRoot(workflow.filePath)
+      const customizePath = getCustomizePath(projectRoot, workflow.id)
+
+      // Empty surfaces are addressable even without a customize.toml file
+      const empty: WorkflowHooks = {
+        activationStepsPrepend: [],
+        activationStepsAppend: [],
+        onComplete: [],
+      }
+
+      if (!fs.existsSync(customizePath)) return empty
+
+      const raw = fs.readFileSync(customizePath, 'utf-8')
+      let parsed: Record<string, unknown>
+      try {
+        parsed = parseToml(raw) as Record<string, unknown>
+      } catch {
+        // Malformed TOML — return empty rather than 500ing.
+        return empty
+      }
+
+      return {
+        activationStepsPrepend: parseSurfaceValue(parsed[SURFACE_TO_TOML_KEY.activationStepsPrepend]),
+        activationStepsAppend: parseSurfaceValue(parsed[SURFACE_TO_TOML_KEY.activationStepsAppend]),
+        onComplete: parseSurfaceValue(parsed[SURFACE_TO_TOML_KEY.onComplete]),
+      }
     },
   )
 
