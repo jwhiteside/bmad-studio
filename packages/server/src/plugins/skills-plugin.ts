@@ -1,10 +1,24 @@
 import fs from 'node:fs'
+import path from 'node:path'
 
+import { parse as parseToml } from 'smol-toml'
 import type { FastifyInstance } from 'fastify'
 import type { Skill, SkillListItem } from '@bmad-studio/shared'
 
-import { NotFoundError, ValidationError } from '../core/errors.js'
+import { NotFoundError, ValidationError, AppError } from '../core/errors.js'
 import { writeFile } from '../core/write-service.js'
+import { atomicWrite } from '../core/atomic-write.js'
+
+/**
+ * Derives the project root from a skill's absolute file path.
+ * Skill paths are like: /absolute/path/to/project/_bmad/module/skills/foo/SKILL.md
+ * We split on '/_bmad/' and take the left part.
+ */
+function deriveProjectRoot(filePath: string): string {
+  const idx = filePath.indexOf('/_bmad/')
+  if (idx === -1) throw new Error(`Cannot derive project root from: ${filePath}`)
+  return filePath.slice(0, idx)
+}
 
 function skillToListItem(skill: Skill): SkillListItem {
   return {
@@ -59,6 +73,57 @@ export async function skillsPlugin(app: FastifyInstance) {
       }
 
       return { ok: true, filePath: result.filePath }
+    },
+  )
+
+  // Write customize layer (team or user TOML override)
+  app.put<{ Params: { id: string }; Body: { layer: 'team' | 'user'; toml: string } }>(
+    '/api/skills/:id/customize',
+    async (request) => {
+      if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+
+      // 1. Find skill by id
+      const index = app.fileStore.getIndex()
+      const skill = index.skills.find((s) => s.id === request.params.id)
+      if (!skill) throw new NotFoundError(`Skill "${request.params.id}" not found`)
+
+      const { layer, toml } = request.body as { layer: 'team' | 'user'; toml: string }
+
+      // 2. Validate TOML — parse error → 400
+      try {
+        parseToml(toml)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        throw new AppError('CUSTOMIZE_PARSE_ERROR', msg, 400, 'error', { skillId: skill.id, layer })
+      }
+
+      // 3. Derive project root
+      const projectRoot = deriveProjectRoot(skill.filePath)
+
+      // 4. Determine write path based on layer
+      const fileName = layer === 'user' ? `${skill.id}.user.toml` : `${skill.id}.toml`
+      const writePath = path.join(projectRoot, '_bmad', 'custom', fileName)
+
+      // 5. Security check — path must stay within _bmad/custom/
+      const resolvedWrite = path.resolve(writePath)
+      const resolvedCustomDir = path.resolve(projectRoot) + '/_bmad/custom/'
+      if (!resolvedWrite.startsWith(resolvedCustomDir)) {
+        throw new ValidationError(`Write path "${writePath}" is outside allowed directory`)
+      }
+
+      // 6. Ensure directory exists
+      await fs.promises.mkdir(path.dirname(writePath), { recursive: true })
+
+      // 7. Write atomically
+      await atomicWrite(writePath, toml)
+
+      // 8. Broadcast WS event
+      if (app.ws) {
+        app.ws.broadcast({ type: 'customize:changed', skillId: request.params.id, layer })
+      }
+
+      // 9. Return ok
+      return { ok: true }
     },
   )
 
