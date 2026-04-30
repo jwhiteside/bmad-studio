@@ -7,3 +7,5 @@
 import './raw-shell.js'
 import './slack-post.js'
 import './git-tag.js'
+import './run-tests.js'
+import './llm-agent-ingest.js'

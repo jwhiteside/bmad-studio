@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# bmad-studio: bundled hook script template installed by the
+# `llm-agent-ingest` template (Epic 35, Story 35.7). Edit freely — once
+# this file exists in _bmad/custom/scripts/ it is never overwritten by
+# Studio (FR33).
+
+set -euo pipefail
+
+KIND=${1:?Usage: $0 <prd|architecture|story|retro>}
+
+# Auto-detect an LLM agent CLI on PATH
+if command -v claude &>/dev/null; then
+  LLM_CLI=claude
+elif command -v codex &>/dev/null; then
+  LLM_CLI=codex
+elif command -v opencode &>/dev/null; then
+  LLM_CLI=opencode
+else
+  echo "Error: no LLM agent CLI found (tried claude, codex, opencode)" >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Hop up out of _bmad/custom/scripts/ to the project root
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# Resolve the artefact glob per kind
+case "$KIND" in
+  prd)
+    ARTEFACT_GLOB="$PROJECT_ROOT/_bmad-output/planning-artifacts/prd-*.md"
+    ;;
+  architecture)
+    ARTEFACT_GLOB="$PROJECT_ROOT/_bmad-output/planning-artifacts/architecture-*.md"
+    ;;
+  story)
+    ARTEFACT_GLOB="$PROJECT_ROOT/_bmad-output/implementation-artifacts/stories/*.md"
+    ;;
+  retro)
+    ARTEFACT_GLOB="$PROJECT_ROOT/_bmad-output/implementation-artifacts/retro-*.md"
+    ;;
+  *)
+    echo "Unknown kind: $KIND" >&2
+    exit 1
+    ;;
+esac
+
+echo "Ingesting $KIND artefact with $LLM_CLI..."
+
+# Stub: replace this with the real LLM CLI invocation for your integration.
+# shellcheck disable=SC2086
+for f in $ARTEFACT_GLOB; do
+  [ -e "$f" ] || continue
+  echo "Would ingest: $f"
+done

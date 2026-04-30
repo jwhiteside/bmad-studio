@@ -259,6 +259,36 @@ Set up the testing environment and validate prerequisites.
     await app.close()
   })
 
+  it('PUT /api/workflows/:id/hooks copies bundled script template on first install', async () => {
+    const app = await createTestApp()
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/workflows/test-workflow/hooks',
+      payload: {
+        surface: 'onComplete',
+        entries: [
+          { command: 'bash {project-root}/_bmad/custom/scripts/llm-wiki-ingest.sh prd' },
+        ],
+        templateIds: ['llm-agent-ingest'],
+      },
+    })
+    expect(response.statusCode).toBe(200)
+
+    const scriptDest = path.join(
+      tmpDir,
+      '_bmad',
+      'custom',
+      'scripts',
+      'llm-wiki-ingest.sh',
+    )
+    expect(fs.existsSync(scriptDest)).toBe(true)
+    const written = fs.readFileSync(scriptDest, 'utf-8')
+    expect(written).toContain('Auto-detect an LLM agent CLI')
+
+    await app.close()
+  })
+
   it('PUT /api/workflows/:id/hooks does NOT overwrite existing script files (FR33)', async () => {
     const app = await createTestApp()
 
