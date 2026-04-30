@@ -30,6 +30,7 @@ import { ManifestMissingError } from './errors.js'
 import { loadManifestCached, watchManifest } from '../v65/manifest-loader.js'
 
 export { ManifestMissingError } from './errors.js'
+export { invalidateCache, watchManifest } from '../v65/manifest-loader.js'
 
 /** Detected BMAD format version. */
 export type BmadVersion = 'v6' | 'v65'
