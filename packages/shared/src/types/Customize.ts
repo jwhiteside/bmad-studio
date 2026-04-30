@@ -16,3 +16,16 @@ export type Resolved<T> = {
   merged: T
   provenance: Record<string, LayerOrigin>
 }
+
+/** A single hook command with optional disabled state. */
+export type HookEntry = {
+  command: string
+  disabled?: boolean
+}
+
+/** Resolved hook surface on a workflow. */
+export type WorkflowHooks = {
+  activationStepsPrepend: HookEntry[]
+  activationStepsAppend: HookEntry[]
+  onComplete: HookEntry[]
+}
