@@ -9,6 +9,7 @@ export type ErrorCode =
   | 'MANIFEST_MISSING'
   | 'MANIFEST_PARSE_ERROR'
   | 'WRITE_FAILED'
+  | 'CUSTOMIZE_PARSE_ERROR'
 
 export type ApiError = {
   error: {
