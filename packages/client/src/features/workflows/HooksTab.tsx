@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Plus } from 'lucide-react'
 
 import type { HookEntry, WorkflowHookSurface, WorkflowHooks } from '@bmad-studio/shared'
 
 import { useHooksPalette } from '../../hooks/use-hooks-palette.js'
 import { HookEntryRow } from './HookEntryRow.js'
+import { TemplatePalette } from './TemplatePalette.js'
 
 type HooksTabProps = {
   workflowId: string
@@ -33,10 +34,30 @@ function sectionEntries(hooks: WorkflowHooks | null, surface: WorkflowHookSurfac
 }
 
 export function HooksTab({ workflowId }: HooksTabProps) {
-  const { hooks, loading, error, toggleEntry } = useHooksPalette(workflowId)
-  // Story 35.3 wires the actual TemplatePalette; for now this just records
-  // which surface "Add" was clicked on so the next story can render it.
-  const [, setOpenPaletteSurface] = useState<WorkflowHookSurface | null>(null)
+  const { hooks, loading, error, toggleEntry, refetch } = useHooksPalette(workflowId)
+  const [openPaletteSurface, setOpenPaletteSurface] = useState<WorkflowHookSurface | null>(null)
+
+  const handleInsert = useCallback(
+    async (surface: WorkflowHookSurface, entry: { templateId: string; command: string }) => {
+      const current = hooks?.[surface] ?? []
+      const updated: HookEntry[] = [...current, { command: entry.command }]
+      try {
+        await fetch(`/api/workflows/${encodeURIComponent(workflowId)}/hooks`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            surface,
+            entries: updated,
+            templateIds: [entry.templateId],
+          }),
+        })
+        await refetch()
+      } catch {
+        /* surfaced via the next refetch */
+      }
+    },
+    [hooks, workflowId, refetch],
+  )
 
   if (loading) {
     return (
@@ -98,6 +119,13 @@ export function HooksTab({ workflowId }: HooksTabProps) {
           </section>
         )
       })}
+      {openPaletteSurface ? (
+        <TemplatePalette
+          surface={openPaletteSurface}
+          onInsert={(entry) => void handleInsert(openPaletteSurface, entry)}
+          onClose={() => setOpenPaletteSurface(null)}
+        />
+      ) : null}
     </div>
   )
 }
