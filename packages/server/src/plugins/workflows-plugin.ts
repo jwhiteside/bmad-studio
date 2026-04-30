@@ -1,7 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { parse as parseToml } from 'smol-toml'
+import { fileURLToPath } from 'node:url'
+
+import { parse as parseToml, stringify as stringifyToml } from 'smol-toml'
 import type { FastifyInstance } from 'fastify'
 import type {
   HookEntry,
@@ -10,8 +12,13 @@ import type {
   WorkflowListItem,
 } from '@bmad-studio/shared'
 
+import { atomicWrite } from '../core/atomic-write.js'
 import { NotFoundError, ValidationError } from '../core/errors.js'
 import { writeFile } from '../core/write-service.js'
+import {
+  HOOK_TEMPLATES,
+  type HookTemplate,
+} from '../v65/hook-template-registry.js'
 
 /**
  * Maps the camelCase WorkflowHookSurface used in the API to the snake_case
@@ -47,6 +54,31 @@ function getCustomizePath(projectRoot: string, workflowId: string): string {
  * Disabled state from sidecar comments is a future enhancement; for now all
  * entries are treated as enabled.
  */
+/**
+ * Serialises HookEntry[] back to ADR-9 TOML scalar format.
+ *
+ * Enabled commands are joined with ` && ` into the TOML scalar string.
+ * Disabled commands are excluded from the scalar but their state is captured
+ * via sidecar comments written above the key:
+ *   # bmad-studio:hook-state {"index":0,"disabled":true}
+ *   on_complete = "cmd2"
+ */
+function serialiseEntries(entries: HookEntry[]): {
+  scalar: string
+  sidecarComments: string[]
+} {
+  const enabled = entries.filter((e) => !e.disabled).map((e) => e.command)
+  const sidecarComments: string[] = []
+  entries.forEach((entry, index) => {
+    if (entry.disabled) {
+      sidecarComments.push(
+        `# bmad-studio:hook-state ${JSON.stringify({ index, disabled: true })}`,
+      )
+    }
+  })
+  return { scalar: enabled.join(' && '), sidecarComments }
+}
+
 function parseSurfaceValue(value: unknown): HookEntry[] {
   if (value === undefined || value === null) return []
   if (typeof value === 'string') {
@@ -337,6 +369,111 @@ export async function workflowsPlugin(app: FastifyInstance) {
       }
     },
   )
+
+  // Update workflow hooks for a single surface (Story 35.5)
+  app.put<{
+    Params: { id: string }
+    Body: {
+      surface: WorkflowHookSurface
+      entries: HookEntry[]
+      /** Optional template ids whose script bundles should be copied alongside the write. */
+      templateIds?: string[]
+    }
+  }>('/api/workflows/:id/hooks', async (request) => {
+    if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+
+    const idx = app.fileStore.getIndex()
+    const workflow = idx.workflows.find((w) => w.id === request.params.id)
+    if (!workflow) throw new NotFoundError(`Workflow "${request.params.id}" not found`)
+
+    const { surface, entries, templateIds } = request.body
+    const tomlKey = SURFACE_TO_TOML_KEY[surface]
+    if (!tomlKey) {
+      throw new ValidationError(`Unknown hook surface: ${String(surface)}`)
+    }
+    if (!Array.isArray(entries)) {
+      throw new ValidationError('entries must be an array')
+    }
+
+    const projectRoot = deriveProjectRoot(workflow.filePath)
+    const customizePath = getCustomizePath(projectRoot, workflow.id)
+
+    // Read + parse existing TOML, or start from an empty object
+    let existing: Record<string, unknown> = {}
+    if (fs.existsSync(customizePath)) {
+      const raw = fs.readFileSync(customizePath, 'utf-8')
+      try {
+        existing = parseToml(raw) as Record<string, unknown>
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        throw new ValidationError(`Existing customize.toml is malformed: ${msg}`)
+      }
+    }
+
+    const { scalar, sidecarComments } = serialiseEntries(entries)
+    if (scalar.length === 0) {
+      delete existing[tomlKey]
+    } else {
+      existing[tomlKey] = scalar
+    }
+
+    // Stringify, then prepend sidecar comments above the affected key (if any)
+    let tomlString = stringifyToml(existing)
+    if (sidecarComments.length > 0 && scalar.length > 0) {
+      const linePattern = new RegExp(`(^|\\n)${tomlKey}\\s*=`, 'm')
+      const sidecarBlock = sidecarComments.join('\n') + '\n'
+      tomlString = tomlString.replace(linePattern, (_match, prefix) =>
+        `${prefix}${sidecarBlock}${tomlKey} =`,
+      )
+    }
+
+    // Security: write path must stay within <projectRoot>/_bmad/custom/
+    const resolvedWrite = path.resolve(customizePath)
+    const resolvedCustomDir =
+      path.resolve(projectRoot) + path.sep + path.join('_bmad', 'custom') + path.sep
+    if (!resolvedWrite.startsWith(resolvedCustomDir)) {
+      throw new ValidationError(`Write path "${customizePath}" is outside allowed directory`)
+    }
+    await fs.promises.mkdir(path.dirname(customizePath), { recursive: true })
+    await atomicWrite(customizePath, tomlString)
+
+    // Copy any bundled script templates needed by the supplied templateIds.
+    // FR33: NEVER overwrite an existing script file in _bmad/custom/scripts/.
+    const ids = Array.isArray(templateIds) ? templateIds : []
+    const seen = new Set<string>()
+    // Resolve the on-disk directory of bundled script templates.
+    // import.meta.url points at this file once compiled, so navigate up to v65/templates/scripts/.
+    const thisDir = path.dirname(fileURLToPath(import.meta.url))
+    const scriptsSourceDir = path.resolve(thisDir, '..', 'v65', 'templates', 'scripts')
+
+    for (const tid of ids) {
+      if (seen.has(tid)) continue
+      seen.add(tid)
+      const tmpl: HookTemplate | undefined = HOOK_TEMPLATES.get(tid)
+      if (!tmpl?.scriptTemplate) continue
+
+      const destDir = path.join(projectRoot, '_bmad', 'custom', 'scripts')
+      const destPath = path.join(destDir, tmpl.scriptTemplate.destPath)
+      if (fs.existsSync(destPath)) continue // FR33
+
+      const sourcePath = path.join(scriptsSourceDir, tmpl.scriptTemplate.sourcePath)
+      if (!fs.existsSync(sourcePath)) continue
+
+      await fs.promises.mkdir(destDir, { recursive: true })
+      await fs.promises.copyFile(sourcePath, destPath)
+      try {
+        await fs.promises.chmod(destPath, 0o755)
+      } catch {
+        // chmod is best-effort on non-POSIX file systems
+      }
+    }
+
+    if (app.ws) {
+      app.ws.broadcast({ type: 'customize:changed', workflowId: workflow.id })
+    }
+
+    return { ok: true }
+  })
 
   // List files within a workflow's supporting directories
   app.get<{ Params: { id: string } }>(

@@ -221,4 +221,97 @@ Set up the testing environment and validate prerequisites.
     await app.close()
   })
 
+  // -- Story 35.5 — PUT /api/workflows/:id/hooks ----------------------------
+
+  it('PUT /api/workflows/:id/hooks writes on_complete as joined scalar', async () => {
+    const app = await createTestApp()
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/workflows/test-workflow/hooks',
+      payload: {
+        surface: 'onComplete',
+        entries: [{ command: 'echo a' }, { command: 'echo b' }],
+      },
+    })
+    expect(response.statusCode).toBe(200)
+    expect(JSON.parse(response.body)).toEqual({ ok: true })
+
+    const tomlPath = path.join(tmpDir, '_bmad', 'custom', 'test-workflow.toml')
+    expect(fs.existsSync(tomlPath)).toBe(true)
+    const written = fs.readFileSync(tomlPath, 'utf-8')
+    expect(written).toContain('on_complete')
+    expect(written).toContain('echo a && echo b')
+
+    await app.close()
+  })
+
+  it('PUT /api/workflows/:id/hooks returns 404 for unknown workflow', async () => {
+    const app = await createTestApp()
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/workflows/does-not-exist/hooks',
+      payload: { surface: 'onComplete', entries: [] },
+    })
+    expect(response.statusCode).toBe(404)
+
+    await app.close()
+  })
+
+  it('PUT /api/workflows/:id/hooks does NOT overwrite existing script files (FR33)', async () => {
+    const app = await createTestApp()
+
+    // Pre-create the destination script file with sentinel content.
+    const scriptsDir = path.join(tmpDir, '_bmad', 'custom', 'scripts')
+    fs.mkdirSync(scriptsDir, { recursive: true })
+    const scriptDest = path.join(scriptsDir, 'llm-wiki-ingest.sh')
+    const sentinel = '#!/bin/bash\necho USER_CUSTOMISED\n'
+    fs.writeFileSync(scriptDest, sentinel)
+
+    // PUT a hook referencing the llm-agent-ingest template (which has a scriptTemplate).
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/workflows/test-workflow/hooks',
+      payload: {
+        surface: 'onComplete',
+        entries: [
+          { command: 'bash {project-root}/_bmad/custom/scripts/llm-wiki-ingest.sh prd' },
+        ],
+        templateIds: ['llm-agent-ingest'],
+      },
+    })
+    expect(response.statusCode).toBe(200)
+
+    // The file must still contain the sentinel — it was NOT overwritten.
+    const content = fs.readFileSync(scriptDest, 'utf-8')
+    expect(content).toBe(sentinel)
+
+    await app.close()
+  })
+
+  it('PUT /api/workflows/:id/hooks writes sidecar comments for disabled entries', async () => {
+    const app = await createTestApp()
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/workflows/test-workflow/hooks',
+      payload: {
+        surface: 'onComplete',
+        entries: [
+          { command: 'echo a' },
+          { command: 'echo b', disabled: true },
+          { command: 'echo c' },
+        ],
+      },
+    })
+    expect(response.statusCode).toBe(200)
+
+    const tomlPath = path.join(tmpDir, '_bmad', 'custom', 'test-workflow.toml')
+    const written = fs.readFileSync(tomlPath, 'utf-8')
+    expect(written).toContain('echo a && echo c')
+    expect(written).toContain('# bmad-studio:hook-state {"index":1,"disabled":true}')
+
+    await app.close()
+  })
 })
