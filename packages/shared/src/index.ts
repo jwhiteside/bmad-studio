@@ -52,6 +52,17 @@ export type {
 } from './events.js'
 export type { Severity, ErrorCode, ApiError } from './errors.js'
 export type { SkillManifestEntry, BmadHelpEntry } from './v65-manifests.js'
+export type DriftedFile = { path: string; expectedHash: string; actualHash: string }
+export type DriftConversion = {
+  token: string
+  filePath: string
+  expectedHash: string
+  actualHash: string
+  proposedOverride?: string
+  unifiedDiff: string
+  ttlSeconds: number
+  createdAt: number
+}
 export type {
   V65WsEvent,
   ManifestChangedEvent,
