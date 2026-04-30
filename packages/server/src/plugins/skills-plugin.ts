@@ -8,6 +8,7 @@ import type { Skill, SkillListItem } from '@bmad-studio/shared'
 import { NotFoundError, ValidationError, AppError } from '../core/errors.js'
 import { writeFile } from '../core/write-service.js'
 import { atomicWrite } from '../core/atomic-write.js'
+import { verifyMerge, probePython } from '../v65/python-bridge.js'
 
 /**
  * Derives the project root from a skill's absolute file path.
@@ -124,6 +125,36 @@ export async function skillsPlugin(app: FastifyInstance) {
 
       // 9. Return ok
       return { ok: true }
+    },
+  )
+
+  // Verify customize merge (Python bridge)
+  app.post<{ Params: { id: string }; Body: { key: 'agent' | 'workflow' } }>(
+    '/api/skills/:id/customize/verify',
+    async (request) => {
+      if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+
+      // 1. Find skill by id
+      const index = app.fileStore.getIndex()
+      const skill = index.skills.find((s) => s.id === request.params.id)
+      if (!skill) throw new NotFoundError(`Skill "${request.params.id}" not found`)
+
+      const { key } = request.body as { key: 'agent' | 'workflow' }
+
+      // 2. Derive roots
+      const projectRoot = deriveProjectRoot(skill.filePath)
+      const skillRoot = path.dirname(skill.filePath)
+
+      // 3. Determine Python availability (respect app-level flag if set, otherwise probe)
+      const pythonAvail =
+        'pythonResolverAvailable' in app
+          ? (app as { pythonResolverAvailable: boolean }).pythonResolverAvailable
+          : probePython().available
+
+      // 4. Call verifyMerge — always return 200 with its verdict
+      const result = await verifyMerge(skillRoot, projectRoot, key, { pythonAvailable: pythonAvail })
+
+      return result
     },
   )
 
