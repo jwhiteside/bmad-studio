@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import matter from 'gray-matter'
+import { parse as parseToml } from 'smol-toml'
 
 import type {
   Workflow,
@@ -326,5 +327,51 @@ export function parseWorkflow(dirPath: string): ParseResult<Workflow> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return { ok: false, error: `Workflow parse error: ${message}`, filePath: dirPath }
+  }
+}
+
+export function parseWorkflowV65(dirPath: string, tomlContent: string): ParseResult<Workflow> {
+  try {
+    // Parse the TOML to validate it has a [workflow] block (content already confirmed by caller)
+    parseToml(tomlContent)
+
+    const skillId = path.basename(dirPath)
+    const skillMdPath = path.join(dirPath, 'SKILL.md')
+
+    // Get name and description from SKILL.md frontmatter
+    let name = skillId
+    let description = ''
+    if (fs.existsSync(skillMdPath)) {
+      try {
+        const { data: fm } = matter(fs.readFileSync(skillMdPath, 'utf-8'))
+        if (fm.name) name = String(fm.name)
+        if (fm.description) description = String(fm.description)
+      } catch {
+        // Use defaults
+      }
+    }
+
+    const phase = extractPhase(dirPath)
+
+    return {
+      ok: true,
+      data: {
+        id: skillId,
+        name,
+        description,
+        entryPoint: skillMdPath,
+        steps: [],
+        filePath: skillMdPath,
+        module: undefined,
+        type: 'step-based',
+        phase,
+        templates: [],
+        subWorkflows: [],
+        supportingFiles: [],
+      },
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { ok: false, error: `Workflow v65 parse error: ${message}`, filePath: dirPath }
   }
 }

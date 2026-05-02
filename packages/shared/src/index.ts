@@ -1,5 +1,5 @@
 export type { Agent, AgentMenuItem, AgentListItem, AgentDetail } from './agents.js'
-export type { Skill, SkillListItem } from './skills.js'
+export type { Skill, SkillListItem, CompiledSkillItem } from './skills.js'
 export type { Team, TeamMember, TeamListItem } from './teams.js'
 export type {
   WorkflowType,

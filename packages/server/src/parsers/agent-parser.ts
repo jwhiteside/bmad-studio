@@ -1,4 +1,8 @@
+import fs from 'node:fs'
+import path from 'node:path'
+
 import matter from 'gray-matter'
+import { parse as parseToml } from 'smol-toml'
 
 import type { Agent, AgentMenuItem } from '@bmad-studio/shared'
 
@@ -101,5 +105,56 @@ export function parseAgent(filePath: string, content: string): ParseResult<Agent
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return { ok: false, error: `Agent parse error: ${message}`, filePath }
+  }
+}
+
+export function parseAgentV65(dirPath: string, tomlContent: string): ParseResult<Agent> {
+  try {
+    const parsed = parseToml(tomlContent) as Record<string, unknown>
+    const agentBlock = (parsed.agent || {}) as Record<string, unknown>
+
+    const skillId = path.basename(dirPath)
+    const skillMdPath = path.join(dirPath, 'SKILL.md')
+
+    // Extract menu items from [[agent.menu]] array
+    const rawMenu = Array.isArray(agentBlock.menu)
+      ? (agentBlock.menu as Array<Record<string, unknown>>)
+      : []
+    const menuItems: AgentMenuItem[] = rawMenu.map((item) => ({
+      trigger: String(item.code || '').toLowerCase(),
+      input: String(item.description || ''),
+      route: item.skill ? `skill:${item.skill}` : String(item.prompt || ''),
+      action: undefined,
+    }))
+
+    const principles = Array.isArray(agentBlock.principles)
+      ? (agentBlock.principles as string[])
+      : []
+
+    return {
+      ok: true,
+      data: {
+        id: skillId,
+        name: String(agentBlock.name || ''),
+        title: String(agentBlock.title || ''),
+        icon: agentBlock.icon ? String(agentBlock.icon) : undefined,
+        role: String(agentBlock.role || ''),
+        module: undefined,
+        discussion: false,
+        webskip: false,
+        hasSidecar: fs.existsSync(path.join(dirPath, '..', '..', '..', 'custom', `${skillId}.toml`)),
+        menu: menuItems,
+        skills: [],
+        identity: agentBlock.identity ? String(agentBlock.identity) : undefined,
+        communicationStyle: agentBlock.communication_style
+          ? String(agentBlock.communication_style)
+          : undefined,
+        principles: principles.join('\n'),
+        filePath: skillMdPath,
+      },
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { ok: false, error: `Agent v65 parse error: ${message}`, filePath: dirPath }
   }
 }
