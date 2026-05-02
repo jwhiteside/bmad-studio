@@ -26,6 +26,7 @@ import { toggleTheme } from '../lib/theme.js'
 import { useThemeStore } from '../stores/ui-store.js'
 import { useWebSocket } from '../hooks/use-websocket.js'
 import { useAppTitle } from '../hooks/use-app-title.js'
+import { useProjectMode } from '../lib/use-project-mode.js'
 
 type ProjectEntry = { path: string; name: string; lastOpened: string }
 
@@ -44,7 +45,7 @@ const outputsGroup: NavGroup = {
   ],
 }
 
-const toolkitGroup: NavGroup = {
+const toolkitGroupV6: NavGroup = {
   label: 'Toolkit',
   icon: Layers,
   items: [
@@ -54,6 +55,19 @@ const toolkitGroup: NavGroup = {
     { to: '/teams', label: 'Teams', icon: UsersRound, badgeKey: 'teams' },
     { to: '/skills', label: 'Skills', icon: Zap, badgeKey: 'skills' },
     { to: '/workflows', label: 'Workflows', icon: GitBranch, badgeKey: 'workflows' },
+  ],
+}
+
+const toolkitGroupV65: NavGroup = {
+  label: 'Toolkit',
+  icon: Layers,
+  items: [
+    { to: '/agents', label: 'Agents', icon: Users, badgeKey: 'agents' },
+    { to: '/workflows', label: 'Workflows', icon: GitBranch, badgeKey: 'workflows' },
+    { to: '/teams', label: 'Teams', icon: UsersRound, badgeKey: 'teams' },
+    { to: '/commands', label: 'Agent Triggers', icon: BookOpen },
+    { to: '/skills', label: 'Skills (compiled)', icon: Zap, badgeKey: 'skills' },
+    { to: '/toolkit', label: 'IDE View', icon: Layers },
   ],
 }
 
@@ -147,6 +161,8 @@ export function Sidebar() {
   const setTheme = useThemeStore((s) => s.setTheme)
   const [badgeCounts, setBadgeCounts] = useState<Record<string, number>>({})
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { isV65 } = useProjectMode()
+  const toolkitGroup = isV65 ? toolkitGroupV65 : toolkitGroupV6
   const [currentProject, setCurrentProject] = useState<{ name: string | null; path: string | null } | null>(null)
   const [allProjects, setAllProjects] = useState<ProjectEntry[]>([])
   const [showProjectMenu, setShowProjectMenu] = useState(false)

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Rocket, ArrowRight, CheckCircle2, FileText, AlertTriangle, ChevronDown, RefreshCw, SkipForward } from 'lucide-react'
 
 import { EmptyState } from '../../shared/EmptyState.js'
+import { useProjectMode } from '../../lib/use-project-mode.js'
 
 function formatRelativeDate(input: string): string {
   const date = new Date(input)
@@ -474,6 +475,7 @@ export function OverviewPage() {
   const [commands, setCommands] = useState<CommandItem[]>([])
   const [health, setHealth] = useState<ProjectHealth | null>(null)
   const [loading, setLoading] = useState(true)
+  const { isV65, isLoading: modeLoading } = useProjectMode()
 
   useEffect(() => {
     Promise.all([
@@ -513,6 +515,14 @@ export function OverviewPage() {
   return (
     <div>
       <h1 className="text-3xl font-extrabold mb-6">Home</h1>
+
+      {/* v6.5 mode badge — only shown when mode is confirmed (not loading) */}
+      {!modeLoading && isV65 && (
+        <div className="mb-6 flex items-center gap-2 rounded-md border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 px-3 py-2 w-fit">
+          <span className="text-xs font-bold text-[var(--color-accent)] uppercase tracking-wider">BMAD v6.5</span>
+          <span className="text-xs text-[var(--color-muted)]">— Entity-based configuration active</span>
+        </div>
+      )}
 
       {/* Product description in labelled panel */}
       {data.projectHealth?.projectDescription && (

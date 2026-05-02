@@ -91,6 +91,16 @@ export async function createApp(options: CreateAppOptions = {}) {
     path: currentProjectRoot ?? null,
   }))
 
+  // GET /api/project/mode — v6 vs v6.5 detection for UI mode switching (Epic 41)
+  app.get('/api/project/mode', async () => {
+    const bmadVersion = currentProjectStatus.bmadVersion
+    const isV65 = typeof bmadVersion === 'string' && bmadVersion.startsWith('6.5')
+    const version: 'v6' | 'v6.5' = isV65 ? 'v6.5' : 'v6'
+    // teamsReadOnly: in v6.5 teams come from manifest, not writable via Studio UI
+    const teamsReadOnly = isV65
+    return { version, teamsReadOnly }
+  })
+
   // Story 28.1: Project switch endpoint
   app.post<{ Body: { path: string } }>('/api/project/switch', async (request) => {
     const targetPath = request.body?.path
