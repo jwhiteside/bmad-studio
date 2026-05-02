@@ -49,18 +49,6 @@ export async function teamsPlugin(app: FastifyInstance) {
     )
   })
 
-  // Project mode endpoint: returns whether teams are derived (v6.5) or user-managed (v6)
-  app.get('/api/project/mode', async () => {
-    if (!('fileStore' in app)) {
-      return { version: 'v6', teamsReadOnly: false }
-    }
-    const v65 = isV65Project(app.fileStore.projectRoot)
-    return {
-      version: v65 ? 'v6.5' : 'v6',
-      teamsReadOnly: v65,
-    }
-  })
-
   // Get team detail
   app.get<{ Params: { id: string } }>('/api/teams/:id', async (request) => {
     if (!('fileStore' in app)) throw new NotFoundError('File store not available')
