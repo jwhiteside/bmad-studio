@@ -18,7 +18,8 @@
     "chokidar": "^5.0.0",
     "fastify": "^5.3.3",
     "gray-matter": "^4.0.3",
-    "js-yaml": "^4.1.1"
+    "js-yaml": "^4.1.1",
+    "smol-toml": "^1.6.1"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
