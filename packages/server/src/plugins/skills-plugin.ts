@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 
 import type { FastifyInstance } from 'fastify'
-import type { Skill, SkillListItem } from '@bmad-studio/shared'
+import type { Skill, SkillListItem, CompiledSkillItem } from '@bmad-studio/shared'
 
 import { NotFoundError, ValidationError } from '../core/errors.js'
 import { writeFile } from '../core/write-service.js'
@@ -21,6 +21,28 @@ export async function skillsPlugin(app: FastifyInstance) {
     if (!('fileStore' in app)) return []
     const index = app.fileStore.getIndex()
     return index.skills.map(skillToListItem)
+  })
+
+  app.get('/api/skills/compiled', async (): Promise<CompiledSkillItem[]> => {
+    if (!('fileStore' in app)) return []
+    const index = app.fileStore.getIndex()
+    const agents: CompiledSkillItem[] = index.agents
+      .filter((a) => a.name || a.title)
+      .map((a) => ({
+        id: a.id,
+        name: a.name || a.title,
+        description: a.role ?? '',
+        module: a.module,
+        type: 'agent' as const,
+      }))
+    const workflows: CompiledSkillItem[] = index.workflows.map((w) => ({
+      id: w.id,
+      name: w.name,
+      description: w.description,
+      module: w.module,
+      type: 'workflow' as const,
+    }))
+    return [...agents, ...workflows]
   })
 
   app.get<{ Params: { id: string } }>('/api/skills/:id', async (request) => {

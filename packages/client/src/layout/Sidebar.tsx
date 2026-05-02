@@ -162,7 +162,7 @@ export function Sidebar() {
       if (overview?.sections) {
         counts.agents = overview.sections.team?.count ?? 0
         counts.teams = overview.sections.teams?.count ?? 0
-        counts.skills = overview.sections.toolkit?.count ?? 0
+        counts.skills = (overview.sections.team?.count ?? 0) + (overview.sections.process?.count ?? 0)
         counts.workflows = overview.sections.process?.count ?? 0
         counts.connections = overview.sections.ideConfigs?.count ?? 0
       }
