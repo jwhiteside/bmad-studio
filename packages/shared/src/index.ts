@@ -62,3 +62,4 @@ export type {
   HealthPythonChangedEvent,
 } from './ws-events.js'
 export type { RegistryStatus, RegistryModuleEntry, RegistryIndex } from './registry.js'
+export type { LayerOrigin, Resolved, HookEntry, WorkflowHooks } from './types/Customize.js'

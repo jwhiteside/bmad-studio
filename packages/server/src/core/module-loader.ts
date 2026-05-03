@@ -6,7 +6,7 @@
  *
  * Single entry point: detects v6 vs v6.5 once, routes to the correct adapter.
  * v6 path delegates to the existing `app.fileStore.getIndex()` flow (unchanged).
- * v6.5 path returns a typed stub for now; Stories 31.2–31.4 fill the real reader.
+ * v6.5 path uses `loadManifestCached` to return parsed manifest data (Story 31.4).
  *
  * **Detection signal refinement (Story 31.1).** The architecture originally
  * specified `_bmad/_config/manifest.yaml` presence as the v6.5 marker, but
@@ -19,11 +19,18 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { FastifyInstance } from 'fastify'
 
-import type { EntityIndex } from '@bmad-studio/shared'
+import type {
+  BmadHelpEntry,
+  EntityIndex,
+  ModuleManifestFile,
+  SkillManifestEntry,
+} from '@bmad-studio/shared'
 
 import { ManifestMissingError } from './errors.js'
+import { loadManifestCached, watchManifest } from '../v65/manifest-loader.js'
 
 export { ManifestMissingError } from './errors.js'
+export { invalidateCache, watchManifest } from '../v65/manifest-loader.js'
 
 /** Detected BMAD format version. */
 export type BmadVersion = 'v6' | 'v65'
@@ -45,12 +52,11 @@ export function detectVersion(projectRoot: string): BmadVersion {
  * Result of a `ModuleLoader.load()` call.
  *
  * v6 path returns the existing `EntityIndex` shape (no behavioural change).
- * v6.5 path currently returns a typed stub; Stories 31.2–31.4 replace this
- * with the parsed manifest output.
+ * v6.5 path returns the parsed manifest data from `loadManifestCached` (Story 31.4).
  */
 export type LoadResult =
   | { version: 'v6'; index: EntityIndex }
-  | { version: 'v65'; stub: 'v65-not-yet-implemented' }
+  | { version: 'v65'; modules: ModuleManifestFile; skills: SkillManifestEntry[]; help: BmadHelpEntry[] }
 
 /**
  * Single entry point for BMAD project loading. Constructed once per app
@@ -100,7 +106,10 @@ export class ModuleLoader {
       return { version: 'v6', index: fileStore.getIndex() }
     }
 
-    // v6.5 — Story 31.1 ships only the stub. Stories 31.2–31.4 wire the real reader.
-    return { version: 'v65', stub: 'v65-not-yet-implemented' }
+    // v6.5 — load real manifest data via the two-tier cache (Story 31.4).
+    // Register the chokidar watcher the first time we see this projectRoot (Story 31.5).
+    watchManifest(projectRoot)
+    const { modules, skills, help } = loadManifestCached(projectRoot)
+    return { version: 'v65', modules, skills, help }
   }
 }

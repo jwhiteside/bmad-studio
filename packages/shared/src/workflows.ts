@@ -1,3 +1,7 @@
+import type { WorkflowHooks } from './types/Customize.js'
+
+export type { WorkflowHooks }
+
 export type WorkflowType = 'step-based' | 'agent-based' | 'composite'
 
 /**
@@ -61,6 +65,8 @@ export type Workflow = {
   templates?: WorkflowTemplate[]
   subWorkflows?: WorkflowSubWorkflow[]
   supportingFiles?: string[]
+  hooks?: WorkflowHooks       // populated when v6.5 customize.toml is present
+  persistentFacts?: string[]  // from [workflow] persistent_facts
 }
 
 export type WorkflowListItem = {

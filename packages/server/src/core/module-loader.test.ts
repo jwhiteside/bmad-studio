@@ -10,6 +10,31 @@ import type { EntityIndex } from '@bmad-studio/shared'
 
 const SKILL_MANIFEST_REL = path.join('_bmad', '_config', 'skill-manifest.csv')
 
+/**
+ * Creates the minimum set of v6.5 manifest files needed for loadManifestCached
+ * to succeed without throwing ManifestMissingError.
+ */
+function createMinimalV65Fixture(dir: string): void {
+  const configDir = path.join(dir, '_bmad', '_config')
+  fs.mkdirSync(configDir, { recursive: true })
+  fs.writeFileSync(
+    path.join(configDir, 'manifest.yaml'),
+    'installation:\n  version: 6.5.0\n  installDate: 2026-01-01T00:00:00.000Z\n  lastUpdated: 2026-01-01T00:00:00.000Z\nmodules: []\n',
+  )
+  fs.writeFileSync(
+    path.join(configDir, 'skill-manifest.csv'),
+    'canonicalId,name,description,module,path\n',
+  )
+  fs.writeFileSync(
+    path.join(configDir, 'bmad-help.csv'),
+    'module,phase,name,code,sequence,workflow-file,command,required,agent-name,agent-command,agent-display-name,agent-title,options,description,output-location,outputs\n',
+  )
+  fs.writeFileSync(
+    path.join(configDir, 'files-manifest.csv'),
+    'type,name,module,path,hash\n',
+  )
+}
+
 const EMPTY_INDEX: EntityIndex = {
   agents: [],
   skills: [],
@@ -96,13 +121,9 @@ describe('module-loader', () => {
       await expect(loader.load(tmpDir)).rejects.toBeInstanceOf(ManifestMissingError)
     })
 
-    it('returns the v6.5 stub shape when _bmad/_config/skill-manifest.csv exists', async () => {
-      // Arrange — v6.5 fixture
-      fs.mkdirSync(path.join(tmpDir, '_bmad', '_config'), { recursive: true })
-      fs.writeFileSync(
-        path.join(tmpDir, SKILL_MANIFEST_REL),
-        'canonicalId,name,description,module,path\n',
-      )
+    it('returns the v6.5 manifest shape when _bmad/_config/skill-manifest.csv exists', async () => {
+      // Arrange — minimal v6.5 fixture (all four manifest files required by loadManifestCached)
+      createMinimalV65Fixture(tmpDir)
 
       const app = makeStubApp({ fileStore: { getIndex: () => EMPTY_INDEX } })
       const loader = new ModuleLoader(app)
@@ -110,10 +131,14 @@ describe('module-loader', () => {
       // Act
       const result = await loader.load(tmpDir)
 
-      // Assert
+      // Assert — real manifest shape per Story 31.4 (stub was removed)
       expect(result.version).toBe('v65')
       if (result.version === 'v65') {
-        expect(result.stub).toBe('v65-not-yet-implemented')
+        expect(result.modules).toBeDefined()
+        expect(result.skills).toBeDefined()
+        expect(Array.isArray(result.skills)).toBe(true)
+        expect(result.help).toBeDefined()
+        expect(Array.isArray(result.help)).toBe(true)
       }
     })
 
@@ -153,12 +178,8 @@ describe('module-loader', () => {
     })
 
     it("emits exactly one structured log line with shape { event: 'v65.version.detected', projectRoot, version }", async () => {
-      // Arrange — v6.5 fixture
-      fs.mkdirSync(path.join(tmpDir, '_bmad', '_config'), { recursive: true })
-      fs.writeFileSync(
-        path.join(tmpDir, SKILL_MANIFEST_REL),
-        'canonicalId,name,description,module,path\n',
-      )
+      // Arrange — minimal v6.5 fixture (all four manifest files required by loadManifestCached)
+      createMinimalV65Fixture(tmpDir)
 
       const app = makeStubApp({ fileStore: { getIndex: () => EMPTY_INDEX } })
       const loader = new ModuleLoader(app)

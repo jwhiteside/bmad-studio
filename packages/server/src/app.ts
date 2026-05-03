@@ -24,6 +24,15 @@ import { teamsPlugin } from './plugins/teams-plugin.js'
 import { commandsPlugin } from './plugins/commands-plugin.js'
 import { datasourcesPlugin } from './plugins/datasources-plugin.js'
 import { detectProject, type ProjectDetectionResult } from './core/project-detector.js'
+import { probePython } from './v65/python-bridge.js'
+
+// Story 32.8: Augment FastifyInstance with Python probe fields.
+declare module 'fastify' {
+  interface FastifyInstance {
+    pythonResolverAvailable: boolean
+    pythonVersion: string | null
+  }
+}
 
 // Bump this constant if a real registry module exceeds the limit. Local-tool default —
 // not security-critical. See finding #17 / spec §6.1 for the rationale.
@@ -38,6 +47,16 @@ type CreateAppOptions = {
 export async function createApp(options: CreateAppOptions = {}) {
   const app = Fastify({
     logger: options.logger ?? true,
+  })
+
+  // Story 32.8: Probe for Python 3.11+ once at startup (synchronous, 1 s timeout).
+  const pythonProbe = probePython()
+  app.decorate('pythonResolverAvailable', pythonProbe.available)
+  app.decorate('pythonVersion', pythonProbe.version)
+  app.log.info({
+    event: 'v65.python.probe',
+    available: pythonProbe.available,
+    version: pythonProbe.version,
   })
 
   // Global error handler
@@ -60,7 +79,20 @@ export async function createApp(options: CreateAppOptions = {}) {
       name: 'bmad-studio',
       version: '0.1.0',
     }
-    return { status: 'ok', ...info }
+    return {
+      status: 'ok',
+      ...info,
+      pythonResolverAvailable: app.pythonResolverAvailable,
+      pythonVersion: app.pythonVersion,
+    }
+  })
+
+  // Story 32.8: Re-run the Python probe on demand (e.g. after the user installs Python).
+  app.post('/api/health/recheck', async () => {
+    const result = probePython()
+    app.pythonResolverAvailable = result.available
+    app.pythonVersion = result.version
+    return { pythonResolverAvailable: result.available, pythonVersion: result.version }
   })
 
   // Project status endpoint

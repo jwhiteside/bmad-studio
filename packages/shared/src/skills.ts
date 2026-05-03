@@ -6,6 +6,10 @@ export type Skill = {
   content: string
   filePath: string
   module?: string
+  customize?: {
+    hasCustomizeToml: boolean
+    layers?: { team: boolean; user: boolean }
+  }
 }
 
 export type SkillListItem = {

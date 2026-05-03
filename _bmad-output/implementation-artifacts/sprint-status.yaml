@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-18
-last_updated: 2026-04-30  # Cycle 5 — E31/E32/E33/E34-foundations all in review (PRs #7–#10)
+last_updated: 2026-04-30  # Cycle 5 BMAD v6.5 migration — E31 in review (PR #7), E32 in-progress (PR #8), E34 foundations in review (PR #9)
 project: BMAD Studio
 project_key: NOKEY
 tracking_system: file-system
@@ -307,36 +307,35 @@ development_status:
   epic-31-retrospective: optional
 
   # Epic 32: Skill/agent adapter + TS resolver
-  # PR #8 open: feature/v65-e32-resolver-primitives — all stories done
+  # PR #8 open: feature/v65-e32-resolver-primitives
   epic-32: in-progress
   32-1-resolver-primitives-four-named-merge-functions: review
   32-2-property-based-equivalence-test-harness: review
-  32-3-resolver-provenance-output-mode: review
-  32-4-three-layer-per-skill-resolver: review
-  32-5-four-layer-central-config-resolver: review
-  32-6-agent-adapter: review
-  32-7-workflow-adapter: review
-  32-8-python-detection-probe-and-health-flag: review
+  32-3-resolver-provenance-output-mode: backlog
+  32-4-three-layer-per-skill-resolver: backlog
+  32-5-four-layer-central-config-resolver: backlog
+  32-6-agent-adapter: backlog
+  32-7-workflow-adapter: backlog
+  32-8-python-detection-probe-and-health-flag: backlog
   epic-32-retrospective: optional
 
   # Epic 33: Customize editor — read-only
-  # PR #10 open: feature/v65-e33-customize-editor-ro — all stories done
-  epic-33: in-progress
-  33-1-customize-get-endpoint: review
-  33-2-layer-pane-codemirror-toml: review
-  33-3-merged-pane-with-provenance-hint: review
-  33-4-customize-tab-and-editor-parent: review
+  epic-33: backlog
+  33-1-customize-get-endpoint: backlog
+  33-2-layer-pane-codemirror-toml: backlog
+  33-3-merged-pane-with-provenance-hint: backlog
+  33-4-customize-tab-and-editor-parent: backlog
   epic-33-retrospective: optional
 
   # Epic 34: Customize editor — write
-  # PR #9 open: feature/v65-e34-foundations — all 6 stories done
+  # PR #9 open: feature/v65-e34-foundations (stories 34.1–34.2)
   epic-34: in-progress
   34-1-atomic-write-helper: review
   34-2-ws-event-registry-and-broadcast-helper: review
-  34-3-customize-put-endpoint: review
-  34-4-python-bridge-verify-merge: review
-  34-5-verify-endpoint-and-badge: review
-  34-6-diff-confirm-dialog-and-revert: review
+  34-3-customize-put-endpoint: backlog
+  34-4-python-bridge-verify-merge: backlog
+  34-5-verify-endpoint-and-badge: backlog
+  34-6-diff-confirm-dialog-and-revert: backlog
   epic-34-retrospective: optional
 
   # Epic 35: Hooks palette MVP (Growth)
