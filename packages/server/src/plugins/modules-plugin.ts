@@ -7,6 +7,8 @@ import type { FastifyInstance } from 'fastify'
 import yaml from 'js-yaml'
 
 import { ValidationError, ConflictError, NotFoundError } from '../core/errors.js'
+import { detectVersion } from '../core/module-loader.js'
+import { loadManifestCached } from '../v65/manifest-loader.js'
 import {
   fetchAndCacheRegistryIndex,
   isRegistryCacheStale,
@@ -1441,7 +1443,41 @@ export async function modulesPlugin(app: FastifyInstance) {
       return []
     }
 
-    const bmadDir = path.join(app.fileStore.projectRoot, '_bmad')
+    const projectRoot = app.fileStore.projectRoot
+    const version = detectVersion(projectRoot)
+
+    // ── v6.5 path ───────────────────────────────────────────────────────────
+    if (version === 'v65') {
+      const { modules, skills } = loadManifestCached(projectRoot)
+
+      return modules.modules.map((m) => {
+        const moduleSkills = skills.filter((s) => s.module === m.name)
+
+        // Categorise skills by path heuristic.
+        const agents = moduleSkills.filter((s) => s.path.includes('/agents/'))
+        const workflows = moduleSkills.filter(
+          (s) => s.path.includes('/workflows/') || s.path.includes('/tasks/'),
+        )
+        const pureSkills = moduleSkills.filter(
+          (s) => !s.path.includes('/agents/') && !s.path.includes('/workflows/') && !s.path.includes('/tasks/'),
+        )
+
+        return {
+          ...m,
+          agentCount: agents.length,
+          skillCount: pureSkills.length,
+          workflowCount: workflows.length,
+          teamCount: 0,
+          agents: agents.map((s) => ({ id: s.canonicalId, name: s.name })),
+          skills: pureSkills.map((s) => ({ id: s.canonicalId, name: s.name })),
+          workflows: workflows.map((s) => ({ id: s.canonicalId, name: s.name })),
+          teams: [],
+        }
+      })
+    }
+
+    // ── v6 path (unchanged) ──────────────────────────────────────────────────
+    const bmadDir = path.join(projectRoot, '_bmad')
     const manifestPath = path.join(bmadDir, '_config', 'manifest.yaml')
 
     const manifest = readManifestSafe(manifestPath)

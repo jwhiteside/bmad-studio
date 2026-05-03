@@ -52,4 +52,15 @@ export type {
   WebSocketEvent,
 } from './events.js'
 export type { Severity, ErrorCode, ApiError } from './errors.js'
+export type { SkillManifestEntry, BmadHelpEntry } from './v65-manifests.js'
+export type {
+  V65WsEvent,
+  ManifestChangedEvent,
+  SkillManifestChangedEvent,
+  CustomizeChangedEvent,
+  DriftDetectedEvent,
+  DriftClearedEvent,
+  HealthPythonChangedEvent,
+} from './ws-events.js'
 export type { RegistryStatus, RegistryModuleEntry, RegistryIndex } from './registry.js'
+export type { LayerOrigin, Resolved, HookEntry, WorkflowHooks } from './types/Customize.js'

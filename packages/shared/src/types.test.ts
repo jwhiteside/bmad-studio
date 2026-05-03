@@ -161,7 +161,14 @@ describe('shared types', () => {
   it('ApiError uses ErrorCode, not bare string', () => {
     expectTypeOf<ApiError>().toHaveProperty('error')
     expectTypeOf<ErrorCode>().toEqualTypeOf<
-      'NOT_FOUND' | 'VALIDATION_ERROR' | 'CONFLICT' | 'FILE_SYSTEM_ERROR' | 'INTERNAL_ERROR'
+      | 'NOT_FOUND'
+      | 'VALIDATION_ERROR'
+      | 'CONFLICT'
+      | 'FILE_SYSTEM_ERROR'
+      | 'INTERNAL_ERROR'
+      | 'MANIFEST_MISSING'
+      | 'MANIFEST_PARSE_ERROR'
+      | 'WRITE_FAILED'
     >()
   })
 })
