@@ -8,9 +8,9 @@ import type { Agent, Skill, Workflow, Package, Team } from '@bmad-studio/shared'
 
 import type { ParseResult, ParsedConfig } from './config-parser.js'
 import { parseConfig } from './config-parser.js'
-import { parseAgent, parseAgentV65 } from './agent-parser.js'
+import { parseAgent } from './agent-parser.js'
 import { parseSkill } from './skill-parser.js'
-import { parseWorkflow, parseWorkflowV65 } from './workflow-parser.js'
+import { parseWorkflow } from './workflow-parser.js'
 import { parsePackage } from './package-parser.js'
 import { parseIdeConfig } from './ide-config-parser.js'
 import { parseTeam } from './team-parser.js'
@@ -122,116 +122,105 @@ export function buildIndex(projectRoot: string): EntityIndex {
   }
 
   if (isV65) {
-    // v6.5: Classify entities via customize.toml block type
-    const customizeFiles = scanRecursive(bmadDir, (name) => name === 'customize.toml').filter(
-      (f) => !f.includes(`${path.sep}_config${path.sep}`),
-    )
+    // v6.5: canonical skill list comes from _config/skill-manifest.csv.
+    // Entity type: skills listed in config.toml [agents.*] are Agents; everything else is a Workflow.
 
-    for (const customizePath of customizeFiles) {
-      const dirPath = path.dirname(customizePath)
-      const relPath = path.relative(bmadDir, dirPath)
-      const moduleName = relPath.split(path.sep)[0]
-
-      if (moduleName === '_config') continue
-
-      const content = fs.readFileSync(customizePath, 'utf-8')
-      let parsed: Record<string, unknown>
+    const mainConfigTomlPath = path.join(bmadDir, 'config.toml')
+    let agentLookup: Record<string, Record<string, unknown>> = {}
+    if (fs.existsSync(mainConfigTomlPath)) {
       try {
-        parsed = parseToml(content) as Record<string, unknown>
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        index.errors.push({ error: `TOML parse error: ${message}`, filePath: customizePath })
-        continue
-      }
-
-      if ('agent' in parsed) {
-        const result = parseAgentV65(dirPath, content)
-        if (result.ok) {
-          result.data.module = moduleName
-        }
-        collectResult(result, index.agents, index.errors)
-      } else if ('workflow' in parsed) {
-        const result = parseWorkflowV65(dirPath, content)
-        if (result.ok) {
-          result.data.module = moduleName
-        }
-        collectResult(result, index.workflows, index.errors)
-      } else {
-        index.errors.push({
-          error: 'customize.toml has neither [agent] nor [workflow] block',
-          filePath: customizePath,
-        })
+        const configToml = parseToml(fs.readFileSync(mainConfigTomlPath, 'utf-8')) as Record<string, unknown>
+        agentLookup = (configToml.agents || {}) as Record<string, Record<string, unknown>>
+      } catch {
+        // best-effort
       }
     }
 
-    // Story 37.2: Enrich agent data from _bmad/config.toml [agents.*] tables
-    const mainConfigTomlPath = path.join(bmadDir, 'config.toml')
-    if (fs.existsSync(mainConfigTomlPath)) {
-      try {
-        const configToml = parseToml(fs.readFileSync(mainConfigTomlPath, 'utf-8')) as Record<
-          string,
-          unknown
-        >
-        const agentLookup = (configToml.agents || {}) as Record<
-          string,
-          Record<string, unknown>
-        >
+    const skillManifestPath = path.join(bmadDir, '_config', 'skill-manifest.csv')
+    if (fs.existsSync(skillManifestPath)) {
+      const csvResult = parseCsv(skillManifestPath, fs.readFileSync(skillManifestPath, 'utf-8'))
+      if (csvResult.ok) {
+        for (const row of csvResult.data) {
+          const id = row['canonicalId'] || row['id'] || ''
+          const name = row['name'] || id
+          const description = row['description'] || ''
+          const module_ = row['module'] || ''
+          const skillPath = row['path'] || ''
+          const filePath = skillPath ? path.join(projectRoot, skillPath) : ''
 
-        for (const agent of index.agents) {
-          const entry = agentLookup[agent.id]
-          if (entry) {
-            if (!agent.name && entry.name) agent.name = String(entry.name)
-            if (!agent.title && entry.title) agent.title = String(entry.title)
-            if (!agent.icon && entry.icon) agent.icon = String(entry.icon)
-            if (!agent.team && entry.team) agent.team = String(entry.team)
-            if (!agent.description && entry.description)
-              agent.description = String(entry.description)
-            if (!agent.module && entry.module) agent.module = String(entry.module)
+          if (id in agentLookup) {
+            const meta = agentLookup[id]
+            index.agents.push({
+              id,
+              name: String(meta.name || name),
+              title: String(meta.title || ''),
+              icon: meta.icon ? String(meta.icon) : undefined,
+              role: String(meta.description || description),
+              module: String(meta.module || module_),
+              team: meta.team ? String(meta.team) : undefined,
+              description: String(meta.description || description),
+              discussion: false,
+              webskip: false,
+              hasSidecar: false,
+              menu: [],
+              skills: [],
+              filePath,
+            })
+          } else {
+            index.workflows.push({
+              id,
+              name,
+              description,
+              entryPoint: filePath,
+              steps: [],
+              filePath,
+              module: module_,
+              type: 'step-based',
+            })
           }
         }
-
-        // Story 40.1: Derive teams from config.toml [agents.*] team fields
-        // Group agents by their team field value
-        const teamMap = new Map<string, string[]>()
-        for (const agent of index.agents) {
-          if (agent.team) {
-            const members = teamMap.get(agent.team) ?? []
-            members.push(agent.id)
-            teamMap.set(agent.team, members)
-          }
-        }
-
-        for (const [teamId, agentIds] of teamMap) {
-          const members = agentIds.flatMap((agentId) => {
-            const agent = index.agents.find((a) => a.id === agentId)
-            if (!agent) return []
-            return [{
-              agentId,
-              displayName: agent.title || agent.name || agentId,
-              title: agent.title || '',
-              icon: agent.icon || '',
-              role: agent.role || '',
-              communicationStyle: agent.communicationStyle || '',
-              identity: agent.identity || '',
-              principles: agent.principles || '',
-              module: agent.module || '',
-            }]
-          })
-
-          index.teams.push({
-            id: teamId,
-            name: toTitleCase(teamId),
-            icon: '',
-            description: '',
-            agentIds,
-            members,
-            partyFile: '',
-            filePath: mainConfigTomlPath,
-          })
-        }
-      } catch {
-        // config.toml enrichment is best-effort — skip on parse failure
+      } else {
+        index.errors.push({ error: skillManifestPath, filePath: skillManifestPath })
       }
+    }
+
+    // Derive teams from config.toml [agents.*] team fields
+    const teamMap = new Map<string, string[]>()
+    for (const agent of index.agents) {
+      if (agent.team) {
+        const members = teamMap.get(agent.team) ?? []
+        members.push(agent.id)
+        teamMap.set(agent.team, members)
+      }
+    }
+
+    for (const [teamId, agentIds] of teamMap) {
+      const members = agentIds.flatMap((agentId) => {
+        const agent = index.agents.find((a) => a.id === agentId)
+        if (!agent) return []
+        return [{
+          agentId,
+          displayName: agent.title || agent.name || agentId,
+          title: agent.title || '',
+          icon: agent.icon || '',
+          role: agent.role || '',
+          communicationStyle: agent.communicationStyle || '',
+          identity: agent.identity || '',
+          principles: agent.principles || '',
+          module: agent.module || '',
+        }]
+      })
+
+      index.teams.push({
+        id: teamId,
+        name: toTitleCase(teamId),
+        icon: '',
+        description: '',
+        agentIds,
+        members,
+        partyFile: '',
+        filePath: mainConfigTomlPath,
+      })
     }
   } else {
     // v6: Use legacy agent and workflow scan heuristics
