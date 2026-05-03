@@ -51,4 +51,5 @@ export type {
   WebSocketEvent,
 } from './events.js'
 export type { Severity, ErrorCode, ApiError } from './errors.js'
+export type { SkillManifestEntry, BmadHelpEntry } from './v65-manifests.js'
 export type { RegistryStatus, RegistryModuleEntry, RegistryIndex } from './registry.js'

@@ -7,6 +7,7 @@ import FormData from 'form-data'
 import yaml from 'js-yaml'
 
 import { createApp, MAX_MODULE_UPLOAD_BYTES } from '../app.js'
+import { invalidateCache } from '../v65/manifest-loader.js'
 
 function makeManifest(modules: Array<{ name: string; source: string }>) {
   return {
@@ -2638,4 +2639,103 @@ describe('modules-plugin — Story 17.3 clean-slate reinstall', () => {
   })
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 31.4 — GET /api/modules returns real v6.5 data (P0 exit criterion)
+// ─────────────────────────────────────────────────────────────────────────────
 
+function repoRoot(importMetaUrl: string): string {
+  let dir = path.dirname(new URL(importMetaUrl).pathname)
+  for (let i = 0; i < 10; i++) {
+    const pkgPath = path.join(dir, 'package.json')
+    if (fs.existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as {
+          workspaces?: unknown
+          name?: string
+        }
+        if (pkg.workspaces || pkg.name === 'bmad-studio') return dir
+      } catch {
+        // continue
+      }
+    }
+    const parent = path.dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return process.cwd()
+}
+
+const REPO_ROOT = repoRoot(import.meta.url)
+const FIXTURE_BMAD = path.join(REPO_ROOT, 'docs', '_bmad_v6.5')
+const FIXTURE_AVAILABLE = fs.existsSync(path.join(FIXTURE_BMAD, '_config', 'manifest.yaml'))
+
+describe('modules-plugin — Story 31.4 v6.5 GET /api/modules', () => {
+  let tmpDir: string
+
+  beforeEach(() => {
+    tmpDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'v65-modules-plugin-test-')))
+    // Link the v6.5 fixture under tmpDir/_bmad
+    const dest = path.join(tmpDir, '_bmad')
+    try {
+      fs.symlinkSync(FIXTURE_BMAD, dest)
+    } catch {
+      fs.cpSync(FIXTURE_BMAD, dest, { recursive: true })
+    }
+    fs.mkdirSync(path.join(tmpDir, '.bmad-studio'), { recursive: true })
+    // Ensure no stale in-memory cache from other tests
+    invalidateCache(tmpDir)
+  })
+
+  afterEach(() => {
+    invalidateCache(tmpDir)
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  it.skipIf(!FIXTURE_AVAILABLE)(
+    'GET /api/modules returns >= 1 module with real v6.5 data (AC: not empty)',
+    async () => {
+      const app = await createApp({
+        logger: false,
+        serveStatic: false,
+        project: {
+          projectRoot: tmpDir,
+          bmadVersion: '6.5.0',
+          versionSupported: true,
+          modules: [],
+          ideDirectories: [],
+        },
+      })
+
+      const resp = await app.inject({ method: 'GET', url: '/api/modules' })
+      expect(resp.statusCode).toBe(200)
+
+      const modules = JSON.parse(resp.body) as Array<{
+        name: string
+        agentCount: number
+        skillCount: number
+        workflowCount: number
+        teamCount: number
+        skills: Array<{ id: string; name: string }>
+      }>
+
+      expect(Array.isArray(modules)).toBe(true)
+      expect(modules.length).toBeGreaterThanOrEqual(1)
+
+      // Every module must have the required shape
+      for (const m of modules) {
+        expect(typeof m.name).toBe('string')
+        expect(typeof m.agentCount).toBe('number')
+        expect(typeof m.skillCount).toBe('number')
+        expect(typeof m.workflowCount).toBe('number')
+        expect(m.teamCount).toBe(0)
+      }
+
+      // The fixture has at least a 'core' module with skills
+      const core = modules.find((m) => m.name === 'core')
+      expect(core).toBeDefined()
+      expect(core!.skills.length).toBeGreaterThan(0)
+
+      await app.close()
+    },
+  )
+})

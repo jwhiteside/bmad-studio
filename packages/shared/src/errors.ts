@@ -6,6 +6,8 @@ export type ErrorCode =
   | 'CONFLICT'
   | 'FILE_SYSTEM_ERROR'
   | 'INTERNAL_ERROR'
+  | 'MANIFEST_MISSING'
+  | 'MANIFEST_PARSE_ERROR'
 
 export type ApiError = {
   error: {
