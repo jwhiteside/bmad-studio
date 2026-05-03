@@ -1,0 +1,359 @@
+# generated: 2026-03-18
+# last_updated: 2026-03-20
+# project: BMAD Studio
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-18
+last_updated: 2026-04-30  # Cycle 5 BMAD v6.5 migration — E31 in review (PR #7), E32 in-progress (PR #8), E34 foundations in review (PR #9)
+project: BMAD Studio
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: Project Foundation & Overview Dashboard
+  epic-1: done
+  1-1-monorepo-scaffolding-and-dev-environment: done
+  1-2-shared-type-definitions: done
+  1-3-bmad-file-parsers: done
+  1-4-file-store-and-write-safety-service: done
+  1-5-project-detection-and-server-bootstrap: done
+  1-6-websocket-live-updates: done
+  1-7-app-shell-and-design-system: done
+  1-8-layout-infrastructure: done
+  1-9-markdown-editor-component: done
+  1-10-diff-preview-component: done
+  1-11-overview-dashboard: done
+  epic-1-retrospective: optional
+
+  # Epic 2: Agent Management
+  epic-2: done
+  2-1-agent-list-api-and-page: done
+  2-2-agent-detail-view: done
+  2-3-agent-override-editing: done
+  2-4-validation-engine: done
+  2-5-shared-repository-browser: done
+  2-6-agent-import: done
+  2-7-global-search-cmd-k: done
+  2-8-vocabulary-translation-layer: done
+  epic-2-retrospective: optional
+
+  # Epic 3: Skill Library & Assignment
+  epic-3: done
+  3-1-skill-list-api-and-page: done
+  3-2-skill-detail-slide-over: done
+  3-3-skill-install-import: done
+  3-4-skill-assignment-drag-and-drop: done
+  epic-3-retrospective: optional
+
+  # Epic 4: Workflow Visualization
+  epic-4: done
+  4-1-workflow-list-api-and-list-view: done
+  4-2-workflow-node-graph-renderer: done
+  4-3-workflow-step-detail-slide-over: done
+  4-4-workflow-graph-editing: done
+  epic-4-retrospective: optional
+
+  # Epic 5: Content & Output Management
+  epic-5: done
+  5-1-outputs-browser: done
+  5-2-template-management: done
+  epic-5-retrospective: optional
+
+  # Epic 6: External Integrations
+  epic-6: done
+  6-1-data-source-configuration: done
+  6-2-data-source-sync-execution: done
+  6-3-workspace-editor: done
+  epic-6-retrospective: optional
+
+  # Epic 7: Package Management
+  epic-7: done
+  7-1-package-import: done
+  7-2-package-export: done
+  epic-7-retrospective: optional
+
+  # Epic 8: Module Management
+  epic-8: done
+  8-1-module-install: done
+  8-2-module-removal: done
+  epic-8-retrospective: optional
+
+  # Epic 9: Project Tools & Customization
+  epic-9: done
+  9-1-file-explorer: done
+  9-2-settings: done
+  9-3-agent-creation-wizard: done
+  epic-9-retrospective: optional
+
+  # Epic 10: Workflow Rearchitecture
+  epic-10: done
+  10-1-enhanced-workflow-shared-types: done
+  10-2a-workflow-parser-type-classification-and-step-scanning: done
+  10-2b-workflow-parser-templates-sub-workflows-supporting-files-and-step-descriptions: done
+  10-3-enhanced-workflow-api: done
+  10-4-workflow-list-phase-grouping-and-type-badges: done
+  10-5-workflow-detail-templates-sub-workflows-supporting-files: done
+  10-6-workflow-detail-step-variant-tabs-and-fix-step-loading: done
+  10-7-workflow-validation-duplicate-step-numbers: done
+  epic-10-retrospective: done
+
+  # Epic 11: Teams — First-Class Entity
+  epic-11: done
+  11-1-team-shared-types-and-parser: done
+  11-2-teams-api-plugin: done
+  11-3-teams-page-and-detail-panel: done
+  11-4-create-team-dialog: done
+  11-5-edit-and-delete-team: done
+  11-6-cross-entity-references-overview-and-agent-detail: done
+  11-7-cross-entity-references-module-detail-and-sidebar: done
+  11-8-party-csv-management: done
+  11-9-team-validation: done
+  epic-11-retrospective: done
+
+  # Epic 12: Module Lifecycle
+  epic-12: done
+  12-1-module-content-population-add-entities: done
+  12-2-module-content-population-upload-entities: done
+  12-3-module-export: done
+  epic-12-retrospective: done
+
+  # Epic 13: UX Polish & Consistency
+  epic-13: done
+  13-1-navigation-reordering-and-badge-counts: done
+  13-2-consistent-entity-page-headers: done
+  13-3-overview-layout-refinements: done
+  13-4-wider-detail-panels-and-overlay-consistency: done
+  13-5-deep-linking-for-all-entities: done
+  13-6-bug-fixes: done
+  13-7-playwright-visual-regression-setup: done
+  epic-13-retrospective: optional
+
+  # Epic 14: Entity CRUD Enhancements
+  epic-14: done
+  14-1-skill-creation-dialog: done
+  14-2-agent-edit-mode: done
+  14-3-module-edit-dialog-and-enhanced-detail: done
+  14-4-workflow-creation-dialog: done
+  14-5-workflow-import-and-edit: done
+  14-6-workflow-step-variant-ux-improvements: done
+  epic-14-retrospective: optional
+
+  # Epic 15: Module Manager Core (Painpoint A — install/remove/regenerate/IDE skills)
+  # Spec: _bmad-output/planning-artifacts/tech-spec-bmad-studio-module-manager-v1.md
+  epic-15: done
+  15-1-module-yaml-parser-and-types: done
+  15-2-polymorphic-install-endpoint-and-local-source: done
+  15-3-polymorphic-install-github-source: done
+  15-4-polymorphic-install-zip-source: done
+  15-5-variable-substitution-pass: done
+  15-6-ide-skill-generator-install: done
+  15-7-remove-flow-and-writeservice-deletes: done
+  15-8-regenerate-ide-skills: done
+  15-9-install-remove-dialog-upgrades: done
+  15-10-playwright-visual-regression-install-remove-dialogs: done  # optional
+  epic-15-retrospective: optional
+
+  # Epic 16: Module Registry (Painpoint B — browse, discover, install from registry)
+  # Spec: _bmad-output/planning-artifacts/tech-spec-bmad-studio-module-manager-v1.md §5
+  epic-16: done
+  16-1-registry-config-in-settings: done
+  16-2-registry-index-fetch-parse-cache: done
+  16-3-registry-browse-ui-and-installed-status: done
+  16-4-install-from-registry-one-click: done
+  16-5-update-from-registry: backlog  # optional
+  epic-16-retrospective: optional
+
+  # Epic 17: Feature Gaps, Reliability & UX
+  # Spec: _bmad-output/planning-artifacts/tech-spec-epic-17-reliability-ux.md
+  epic-17: done
+  17-1-workflow-step-race-fix: done
+  17-2-slideover-focus-trap: done
+  17-3-module-clean-slate-reinstall: done
+  17-4-csvviewer-inline-editing: done
+  17-5-accessibility-polish: done
+  17-6-playwright-baseline-refresh: done
+  epic-17-retrospective: optional
+
+  # Epic 18: Platform & Publishing
+  # Covers: CI pipeline, npm publish workflow, release automation
+  epic-18: backlog
+  epic-18-retrospective: optional
+
+  # ─── Cycle 2: Post-v1.0 Enhancements (Apr 11 2026) ───
+  # 9 epics (unified 15–23 per epic-numbering-map.md), all shipped.
+  # Git messages used old "Epic 1–9" labels — see numbering map for reconciliation.
+  # Note: Unified 15–17 overlap with Cycle 1 Module Manager numbers above.
+  # Cycle 2 epics were not individually tracked in this file. All done.
+
+  # ─── Cycle 3: Feedback Round (Apr 12 2026) ───
+  # Planning: _bmad-output/planning-artifacts/epics-cycle3.md
+
+  # Epic 24: Bug Fixes & Stability
+  epic-24: done
+  24-1-fix-toolkit-filter-counts-and-add-teams-filter: done
+  24-2-fix-ide-list-in-datasources: done
+  24-3-correct-and-unify-workflow-type-descriptions: done
+  24-4-project-switching-technical-spike: done
+  epic-24-retrospective: optional
+
+  # Epic 25: UI Consistency & Entity Polish
+  epic-25: done
+  25-1-create-unified-entity-card-component-system: done
+  25-2-standardise-entity-creation-dialog-terminology: done
+  25-3-align-team-dialog-icon-field-with-agent-dialog: done
+  25-4-remove-preview-and-split-toggles-from-skills-detail-pane: done
+  25-5-reposition-module-dropdown-and-relabel-as-parent-module: done
+  25-6-remove-workflow-graph-view-and-clean-up-react-flow: done
+  25-7-reposition-search-as-header-icon: done
+  epic-25-retrospective: optional
+
+  # Epic 26: Home Page Intelligence & Output Hub
+  epic-26: done
+  26-1-enrich-sprint-status-with-epics-and-stories-list: done
+  26-2-format-sprint-status-dates-as-human-readable: done
+  26-3-add-toolkit-summary-section-to-home-page: done
+  26-4-bmad-methodology-visual-design-spike: done
+  26-5-implement-bmad-methodology-phase-visual: done
+  26-6-group-output-hub-files-by-sub-type: done
+  26-7-separate-project-level-and-executional-outputs: done
+  26-8-detect-missing-project-context-and-prompt-creation: done
+  26-9-project-context-structured-editor: done
+  epic-26-retrospective: optional
+
+  # Epic 27: Files, Agent Triggers & Cleanup
+  epic-27: done
+  27-1-surface-agent-triggers-from-all-installed-modules: done
+  27-2-display-file-type-icons-in-files-section: done
+  27-3-add-collapsible-folder-tree-to-files-section: done
+  27-4-resolve-data-source-terminology-collision: done
+  epic-27-retrospective: optional
+
+  # Epic 28: Project Switching (Runtime)
+  epic-28: done
+  28-0-refactor-filestore-to-holder-pattern: done
+  28-1-server-side-project-switch-api-endpoint: done
+  28-2-websocket-broadcast-on-project-switch: done
+  28-3-project-switcher-ui-in-navigation: done
+  28-4-edge-case-handling-for-project-switch: done
+  epic-28-retrospective: optional
+
+  # Epic 29: Cycle 4 PM Feedback — UI Restructure
+  epic-29: done
+  29-1-sidenav-nested-toolkit-settings-groups: done
+  29-2-home-page-simplification-product-description: done
+  29-3-output-hub-bmad-phase-grouping: done
+  29-4-markdown-preview-gfm-frontmatter: done
+  29-5-small-fixes-teams-button-about-readme: done
+  epic-29-retrospective: optional
+
+  # Epic 30: Apr 13 PM Feedback — UI Polish
+  epic-30: done
+  30-1-sidenav-outputs-group-all-files-to-settings: done
+  30-2-home-output-hub-bmad-phase-labels: done
+  30-3-home-project-context-labelled-panel: done
+  30-4-home-toolkit-icons-remove-skills-line: done
+  30-5-bmad-process-bordered-phase-cards: done
+  30-6-page-descriptions-below-h1: done
+  30-7-markdown-preview-isolated-css: done
+  30-8-sidenav-view-all-and-preferences-position: done
+  epic-30-retrospective: optional
+
+  # ─── Cycle 5: BMAD v6.5 Migration (Apr 28 2026+) ───
+  # PRD: _bmad-output/planning-artifacts/prd-v65-migration.md
+  # Architecture: _bmad-output/planning-artifacts/architecture-v65-migration.md
+  # Epics: _bmad-output/planning-artifacts/epics-v65-migration.md
+  # Readiness: _bmad-output/planning-artifacts/implementation-readiness-report-2026-04-29.md
+
+  # Epic 31: v6.5 detection + manifest reader (P0 — Blocker)
+  # PR #7 open: feature/v65-manifest-reader
+  epic-31: in-progress
+  31-1-strangler-fig-facade: review
+  31-2-manifest-reader: review
+  31-3-two-tier-cache-with-files-manifest-hash: review
+  31-4-modules-endpoint-real-data-fixes-empty-list-bug: review
+  31-5-chokidar-watcher-and-cache-invalidation: review
+  epic-31-retrospective: optional
+
+  # Epic 32: Skill/agent adapter + TS resolver
+  # PR #8 open: feature/v65-e32-resolver-primitives
+  epic-32: in-progress
+  32-1-resolver-primitives-four-named-merge-functions: review
+  32-2-property-based-equivalence-test-harness: review
+  32-3-resolver-provenance-output-mode: backlog
+  32-4-three-layer-per-skill-resolver: backlog
+  32-5-four-layer-central-config-resolver: backlog
+  32-6-agent-adapter: backlog
+  32-7-workflow-adapter: backlog
+  32-8-python-detection-probe-and-health-flag: backlog
+  epic-32-retrospective: optional
+
+  # Epic 33: Customize editor — read-only
+  epic-33: backlog
+  33-1-customize-get-endpoint: backlog
+  33-2-layer-pane-codemirror-toml: backlog
+  33-3-merged-pane-with-provenance-hint: backlog
+  33-4-customize-tab-and-editor-parent: backlog
+  epic-33-retrospective: optional
+
+  # Epic 34: Customize editor — write
+  # PR #9 open: feature/v65-e34-foundations (stories 34.1–34.2)
+  epic-34: in-progress
+  34-1-atomic-write-helper: review
+  34-2-ws-event-registry-and-broadcast-helper: review
+  34-3-customize-put-endpoint: backlog
+  34-4-python-bridge-verify-merge: backlog
+  34-5-verify-endpoint-and-badge: backlog
+  34-6-diff-confirm-dialog-and-revert: backlog
+  epic-34-retrospective: optional
+
+  # Epic 35: Hooks palette MVP (Growth)
+  epic-35: backlog
+  35-1-hook-template-interface-and-registry: backlog
+  35-2-hooks-tab-ui-and-disable-toggle: backlog
+  35-3-template-palette-and-parameter-form: backlog
+  35-4-hooks-get-endpoint: backlog
+  35-5-hooks-put-endpoint-and-script-template-copy: backlog
+  35-6-templates-raw-shell-slack-git-tag: backlog
+  35-7-templates-run-tests-llm-agent-ingest: backlog
+  epic-35-retrospective: optional
+
+  # Epic 36: Drift detector (Growth)
+  epic-36: backlog
+  36-1-drift-detector-sha256-scan: backlog
+  36-2-drift-get-endpoint-and-ws-events: backlog
+  36-3-drift-badge-and-list-view: backlog
+  36-4-drift-conversion-payload-and-token-cache: backlog
+  36-5-drift-convert-flow-and-reset: backlog
+  epic-36-retrospective: optional
