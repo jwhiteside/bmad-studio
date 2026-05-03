@@ -5,6 +5,7 @@ export type {
   WorkflowType,
   WorkflowTemplate,
   WorkflowSubWorkflow,
+  WorkflowSubAgent,
   Workflow,
   WorkflowStep,
   WorkflowListItem,

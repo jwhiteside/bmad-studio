@@ -7,6 +7,7 @@ import type { AppInfo, ProjectStatus } from '@bmad-studio/shared'
 import type { FastifyServerOptions } from 'fastify'
 
 import { registerStatic } from './static.js'
+import { isNewEntityModel } from './parsers/index-builder.js'
 import { registerFileStore, createFileStore } from './core/file-store.js'
 import { registerWebSocket } from './core/websocket.js'
 import { AppError } from './core/errors.js'
@@ -92,10 +93,10 @@ export async function createApp(options: CreateAppOptions = {}) {
     path: currentProjectRoot ?? null,
   }))
 
-  // GET /api/project/mode — v6 vs v6.5 detection for UI mode switching (Epic 41)
+  // GET /api/project/mode — v6 vs v6.5+ detection for UI mode switching (Epic 41)
   app.get('/api/project/mode', async () => {
     const bmadVersion = currentProjectStatus.bmadVersion
-    const isV65 = typeof bmadVersion === 'string' && bmadVersion.startsWith('6.5')
+    const isV65 = typeof bmadVersion === 'string' && isNewEntityModel(bmadVersion)
     const version: 'v6' | 'v6.5' = isV65 ? 'v6.5' : 'v6'
     // teamsReadOnly: in v6.5 teams come from manifest, not writable via Studio UI
     const teamsReadOnly = isV65

@@ -674,6 +674,26 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
             </div>
           )}
 
+          {/* Sub-Agents — workflow-scoped LLM instruction files */}
+          {workflow.subAgents && workflow.subAgents.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold mb-3">Sub-Agents ({workflow.subAgents.length})</h3>
+              <div className="space-y-1">
+                {workflow.subAgents.map((sa) => (
+                  <div
+                    key={sa.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]"
+                    title={sa.filePath}
+                  >
+                    <Users size={14} className="text-purple-400" />
+                    <span className="text-sm">{sa.name}</span>
+                    <span className="ml-auto text-[10px] text-[var(--color-muted)]">{sa.id}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Agent-based: Agents & Resources with clickable files */}
           {workflow.type === 'agent-based' && supportingFileGroups.length > 0 && (
             <div>

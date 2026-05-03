@@ -80,6 +80,18 @@ function toTitleCase(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+/**
+ * Returns true for v6.5 and above (the new entity model introduced in v6.5).
+ * v7, v8, etc. also use this model; v6.0–v6.4 use the legacy md-file scanner.
+ */
+export function isNewEntityModel(version: string): boolean {
+  const parts = version.split('.')
+  const major = parseInt(parts[0] ?? '0', 10)
+  const minor = parseInt(parts[1] ?? '0', 10)
+  if (isNaN(major) || isNaN(minor)) return false
+  return major > 6 || (major === 6 && minor >= 5)
+}
+
 export function buildIndex(projectRoot: string): EntityIndex {
   const bmadDir = path.join(projectRoot, '_bmad')
   const index: EntityIndex = {
@@ -115,7 +127,7 @@ export function buildIndex(projectRoot: string): EntityIndex {
       ) as Record<string, unknown>
       const installation = manifestContent?.installation as Record<string, unknown> | undefined
       const version = String(installation?.version ?? '')
-      isV65 = version.startsWith('6.5')
+      isV65 = isNewEntityModel(version)
     } catch {
       // If we can't parse the manifest, assume v6
     }
@@ -167,6 +179,38 @@ export function buildIndex(projectRoot: string): EntityIndex {
               filePath,
             })
           } else {
+            // Determine if utility (no customize.toml) or proper workflow
+            const skillDir = skillPath ? path.dirname(path.join(projectRoot, skillPath)) : ''
+            let workflowType: import('@bmad-studio/shared').WorkflowType =
+              module_ === 'core' ? 'utility' : 'step-based'
+            const subAgents: import('@bmad-studio/shared').WorkflowSubAgent[] = []
+
+            if (skillDir && fs.existsSync(skillDir)) {
+              // If no customize.toml exists in this skill dir it's a utility skill
+              if (!fs.existsSync(path.join(skillDir, 'customize.toml'))) {
+                workflowType = 'utility'
+              }
+
+              // Collect sub-agents from agents/ subdirectory
+              const agentsDir = path.join(skillDir, 'agents')
+              if (fs.existsSync(agentsDir)) {
+                for (const entry of fs.readdirSync(agentsDir)) {
+                  if (!entry.endsWith('.md')) continue
+                  const agentFilePath = path.join(agentsDir, entry)
+                  const content = fs.readFileSync(agentFilePath, 'utf-8')
+                  const h1Match = content.match(/^#\s+(.+)$/m)
+                  const agentName = h1Match
+                    ? h1Match[1].trim()
+                    : entry.replace(/\.md$/, '').replace(/-/g, ' ')
+                  subAgents.push({
+                    id: entry.replace(/\.md$/, ''),
+                    name: agentName,
+                    filePath: agentFilePath,
+                  })
+                }
+              }
+            }
+
             index.workflows.push({
               id,
               name,
@@ -175,7 +219,8 @@ export function buildIndex(projectRoot: string): EntityIndex {
               steps: [],
               filePath,
               module: module_,
-              type: 'step-based',
+              type: workflowType,
+              subAgents: subAgents.length > 0 ? subAgents : undefined,
             })
           }
         }
