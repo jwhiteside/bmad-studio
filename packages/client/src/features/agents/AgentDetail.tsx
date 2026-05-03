@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, ChevronRight, Pencil, Plus, GitBranch, Users, GitMerge, AlertCircle } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, ChevronDown, ChevronRight, Pencil, Plus, GitBranch, Users, GitMerge, AlertCircle, Save } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
 
 import type { TeamListItem } from '@bmad-studio/shared'
 
@@ -10,14 +10,19 @@ import { useTeams } from '../teams/use-teams.js'
 import { SkillAssignmentPanel } from './SkillAssignmentPanel.js'
 import { EditAgentDialog } from './EditAgentDialog.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
+import { CodeMirrorEditor } from '../../shared/markdown-editor/CodeMirrorEditor.js'
 import { useNotifications } from '../../layout/NotificationProvider.js'
 import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
+import { useAgentCustomize, useUpdateAgentCustomize } from './use-agent-customize.js'
+
+type AgentTab = 'overview' | 'customize'
 
 export function AgentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { notify } = useNotifications()
   const { data: agent, isLoading, error } = useAgentDetail(id ?? '')
+  const [activeTab, setActiveTab] = useState<AgentTab>('overview')
   const [sourceExpanded, setSourceExpanded] = useState(false)
   const [sourceContent, setSourceContent] = useState<string | null>(null)
   const [sourceLoading, setSourceLoading] = useState(false)
@@ -25,6 +30,30 @@ export function AgentDetailPage() {
   const [showEdit, setShowEdit] = useState(false)
   const { data: workflows } = useWorkflows()
   const { data: allTeams } = useTeams()
+
+  // Customize tab state
+  const agentId = id ?? ''
+  const { data: customizeData, error: customizeError, isLoading: customizeLoading } = useAgentCustomize(agentId)
+  const updateCustomize = useUpdateAgentCustomize(agentId)
+  const [customizeContent, setCustomizeContent] = useState<string>('')
+  const customizeLoadedRef = useRef(false)
+
+  // Sync editor content when customize data loads (only on first load)
+  useEffect(() => {
+    if (customizeData && !customizeLoadedRef.current) {
+      setCustomizeContent(customizeData.raw)
+      customizeLoadedRef.current = true
+    }
+  }, [customizeData])
+
+  // Reset loaded ref when agent id changes
+  useEffect(() => {
+    customizeLoadedRef.current = false
+    setCustomizeContent('')
+  }, [agentId])
+
+  // True if this is NOT a v6.5 project (404 from customize endpoint)
+  const isNotV65 = customizeError && (customizeError as Error & { isNotV65?: boolean }).isNotV65 === true
 
   // Find teams this agent belongs to
   const agentTeams = (allTeams ?? []).filter((t: TeamListItem) =>
@@ -76,6 +105,16 @@ export function AgentDetailPage() {
     )
   }
 
+  async function handleCustomizeSave() {
+    try {
+      await updateCustomize.mutateAsync(customizeContent)
+      notify('success', 'customize.toml saved')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save'
+      notify('error', msg)
+    }
+  }
+
   return (
     <div className="max-w-3xl">
       <Link
@@ -116,6 +155,71 @@ export function AgentDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* Tab bar — show Customize tab only for v6.5 projects */}
+      {!isNotV65 && (
+        <div className="flex gap-1 mb-6 bg-[var(--color-surface-raised)] rounded-md p-1 border border-[var(--color-border-subtle)]">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-1.5 text-sm rounded transition-colors ${
+              activeTab === 'overview'
+                ? 'bg-[var(--color-bg)] text-[var(--color-text)] font-bold shadow-sm'
+                : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('customize')}
+            className={`px-4 py-1.5 text-sm rounded transition-colors ${
+              activeTab === 'customize'
+                ? 'bg-[var(--color-bg)] text-[var(--color-text)] font-bold shadow-sm'
+                : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            Customize
+          </button>
+        </div>
+      )}
+
+      {/* Customize tab content */}
+      {activeTab === 'customize' && !isNotV65 && (
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-bold">customize.toml</h2>
+              <p className="text-xs text-[var(--color-muted)] mt-0.5">
+                Edit the <code className="font-[var(--font-mono)]">[agent]</code> block to override persona, menu items, and activation steps for this agent.
+              </p>
+            </div>
+            <button
+              onClick={() => void handleCustomizeSave()}
+              disabled={updateCustomize.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors"
+            >
+              <Save size={13} />
+              {updateCustomize.isPending ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+          <div className="rounded-lg border border-[var(--color-border-subtle)] overflow-hidden" style={{ height: '500px' }}>
+            {customizeLoading ? (
+              <div className="h-full bg-[var(--color-surface-raised)] animate-pulse" />
+            ) : (
+              <CodeMirrorEditor
+                content={customizeContent}
+                onChange={setCustomizeContent}
+                onSave={() => void handleCustomizeSave()}
+                language="plaintext"
+                placeholder={'[agent]\nname = ""\ntitle = ""\n'}
+              />
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Overview tab content — hidden when Customize is active */}
+      {activeTab === 'overview' && (
+        <>
 
       {/* Persona */}
       {(agent.identity || agent.communicationStyle || agent.principles) && (
@@ -419,6 +523,9 @@ export function AgentDetailPage() {
           </div>
         )}
       </section>
+
+        </>
+      )}
 
       {showEdit && agent && (
         <EditAgentDialog

@@ -2,7 +2,7 @@ import type { WorkflowHooks } from './types/Customize.js'
 
 export type { WorkflowHooks }
 
-export type WorkflowType = 'step-based' | 'agent-based' | 'composite'
+export type WorkflowType = 'step-based' | 'agent-based' | 'composite' | 'utility'
 
 /**
  * Canonical workflow type definitions — single source of truth.
@@ -29,6 +29,17 @@ export const WORKFLOW_TYPE_DEFINITIONS: Record<WorkflowType, {
     description: 'Combines step-based and agent-based sections. Some phases are handled by a single agent following steps, others hand off to specialist agents.',
     bestFor: ['Complex processes needing both structured steps and agent handoffs', 'Workflows with parallel tracks'],
   },
+  utility: {
+    label: 'Utility Skill',
+    description: 'A reusable tool or technique that can be invoked from any context — not a structured workflow, but a capability the LLM applies on demand.',
+    bestFor: ['Brainstorming', 'Document review', 'Editorial tasks', 'General-purpose operations'],
+  },
+}
+
+export type WorkflowSubAgent = {
+  id: string
+  name: string
+  filePath: string
 }
 
 export type WorkflowTemplate = {
@@ -65,8 +76,9 @@ export type Workflow = {
   templates?: WorkflowTemplate[]
   subWorkflows?: WorkflowSubWorkflow[]
   supportingFiles?: string[]
-  hooks?: WorkflowHooks       // populated when v6.5 customize.toml is present
-  persistentFacts?: string[]  // from [workflow] persistent_facts
+  subAgents?: WorkflowSubAgent[]
+  hooks?: WorkflowHooks
+  persistentFacts?: string[]
 }
 
 export type WorkflowListItem = {

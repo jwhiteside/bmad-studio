@@ -2,6 +2,23 @@ import { useQuery } from '@tanstack/react-query'
 
 import type { TeamListItem, Team } from '@bmad-studio/shared'
 
+export type ProjectMode = {
+  version: 'v6' | 'v6.5'
+  teamsReadOnly: boolean
+}
+
+export function useProjectMode() {
+  return useQuery({
+    queryKey: ['project', 'mode'],
+    queryFn: async () => {
+      const response = await fetch('/api/project/mode')
+      if (!response.ok) return { version: 'v6', teamsReadOnly: false } as ProjectMode
+      return response.json() as Promise<ProjectMode>
+    },
+    staleTime: 60_000,
+  })
+}
+
 export function useTeams() {
   return useQuery({
     queryKey: ['teams'],

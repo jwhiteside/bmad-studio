@@ -7,6 +7,7 @@ import type { AppInfo, ProjectStatus } from '@bmad-studio/shared'
 import type { FastifyServerOptions } from 'fastify'
 
 import { registerStatic } from './static.js'
+import { isNewEntityModel } from './parsers/index-builder.js'
 import { registerFileStore, createFileStore } from './core/file-store.js'
 import { registerWebSocket } from './core/websocket.js'
 import { AppError } from './core/errors.js'
@@ -23,6 +24,7 @@ import { modulesPlugin } from './plugins/modules-plugin.js'
 import { teamsPlugin } from './plugins/teams-plugin.js'
 import { commandsPlugin } from './plugins/commands-plugin.js'
 import { datasourcesPlugin } from './plugins/datasources-plugin.js'
+import { customizePlugin } from './plugins/customize-plugin.js'
 import { detectProject, type ProjectDetectionResult } from './core/project-detector.js'
 import { probePython } from './v65/python-bridge.js'
 
@@ -123,6 +125,16 @@ export async function createApp(options: CreateAppOptions = {}) {
     path: currentProjectRoot ?? null,
   }))
 
+  // GET /api/project/mode — v6 vs v6.5+ detection for UI mode switching (Epic 41)
+  app.get('/api/project/mode', async () => {
+    const bmadVersion = currentProjectStatus.bmadVersion
+    const isV65 = typeof bmadVersion === 'string' && isNewEntityModel(bmadVersion)
+    const version: 'v6' | 'v6.5' = isV65 ? 'v6.5' : 'v6'
+    // teamsReadOnly: in v6.5 teams come from manifest, not writable via Studio UI
+    const teamsReadOnly = isV65
+    return { version, teamsReadOnly }
+  })
+
   // Story 28.1: Project switch endpoint
   app.post<{ Body: { path: string } }>('/api/project/switch', async (request) => {
     const targetPath = request.body?.path
@@ -202,6 +214,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   await app.register(teamsPlugin)
   await app.register(commandsPlugin)
   await app.register(datasourcesPlugin)
+  await app.register(customizePlugin)
 
   if (options.serveStatic !== false) {
     await registerStatic(app)

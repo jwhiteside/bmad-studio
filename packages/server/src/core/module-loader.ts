@@ -21,10 +21,10 @@ import type { FastifyInstance } from 'fastify'
 
 import type {
   BmadHelpEntry,
-  EntityIndex,
   ModuleManifestFile,
   SkillManifestEntry,
 } from '@bmad-studio/shared'
+import type { EntityIndex } from '../parsers/index-builder.js'
 
 import { ManifestMissingError } from './errors.js'
 import { loadManifestCached, watchManifest } from '../v65/manifest-loader.js'

@@ -3,7 +3,7 @@ import { Users, Plus } from 'lucide-react'
 
 import type { TeamListItem } from '@bmad-studio/shared'
 
-import { useTeams } from './use-teams.js'
+import { useTeams, useProjectMode } from './use-teams.js'
 import { TeamDetailPanel } from './TeamDetailPanel.js'
 import { CreateTeamDialog } from './CreateTeamDialog.js'
 import { EmptyState } from '../../shared/EmptyState.js'
@@ -72,10 +72,13 @@ function TeamCard({
 
 export function TeamsPage() {
   const { data: teams, isLoading, refetch } = useTeams()
+  const { data: projectMode } = useProjectMode()
   const [selectedId, setSelectedId] = useDetailParam('detail')
   const [activeModule, setActiveModule] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+
+  const isV65 = projectMode?.teamsReadOnly === true
 
   const modules = useMemo(() => {
     if (!teams) return []
@@ -131,15 +134,21 @@ export function TeamsPage() {
         <EmptyState
           icon={Users}
           title="No teams found"
-          description="Teams group agents for collaborative workflows and Party Mode. Create a team to get started."
+          description={
+            isV65
+              ? 'Teams are derived from agent configuration. Add a team field to agents in _bmad/config.toml to create teams.'
+              : 'Teams group agents for collaborative workflows and Party Mode. Create a team to get started.'
+          }
           actions={
-            <button
-              onClick={() => setShowCreate(true)}
-              className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
-            >
-              <Plus size={14} />
-              New Team
-            </button>
+            isV65 ? undefined : (
+              <button
+                onClick={() => setShowCreate(true)}
+                className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
+              >
+                <Plus size={14} />
+                New Team
+              </button>
+            )
           }
         />
         {showCreate && (
@@ -167,13 +176,19 @@ export function TeamsPage() {
         search={search}
         onSearchChange={setSearch}
         actions={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            New Team
-          </button>
+          !isV65 ? (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              New Team
+            </button>
+          ) : (
+            <span className="text-xs text-[var(--color-muted)] italic px-2 py-1">
+              Derived from agent config
+            </span>
+          )
         }
       />
 

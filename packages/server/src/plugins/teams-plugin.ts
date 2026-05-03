@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import type { FastifyInstance } from 'fastify'
-import yaml from 'js-yaml'
+import yaml, { load as loadYaml } from 'js-yaml'
 
 import type { TeamListItem } from '@bmad-studio/shared'
 
@@ -16,6 +16,19 @@ function slugify(name: string): string {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
+}
+
+function isV65Project(projectRoot: string): boolean {
+  const manifestPath = path.join(projectRoot, '_bmad', '_config', 'manifest.yaml')
+  if (!fs.existsSync(manifestPath)) return false
+  try {
+    const manifest = loadYaml(fs.readFileSync(manifestPath, 'utf-8')) as Record<string, unknown>
+    const installation = manifest?.installation as Record<string, unknown> | undefined
+    const version = String(installation?.version ?? '')
+    return version.startsWith('6.5')
+  } catch {
+    return false
+  }
 }
 
 export async function teamsPlugin(app: FastifyInstance) {
@@ -65,9 +78,13 @@ export async function teamsPlugin(app: FastifyInstance) {
     return { content }
   })
 
-  // Create team
+  // Create team (v6 only — not supported in v6.5)
   app.post('/api/teams', async (request, reply) => {
     if (!('fileStore' in app)) throw new ValidationError('No project detected')
+
+    if (isV65Project(app.fileStore.projectRoot)) {
+      throw new ValidationError('Teams are derived from agent configuration in v6.5 projects and cannot be created manually')
+    }
 
     const body = request.body as {
       name?: string
@@ -118,9 +135,14 @@ export async function teamsPlugin(app: FastifyInstance) {
     return { ok: true, id: `team-${slug}`, path: teamFile }
   })
 
-  // Update team
+  // Update team (v6 only — not supported in v6.5)
   app.put<{ Params: { id: string } }>('/api/teams/:id', async (request) => {
     if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+
+    if (isV65Project(app.fileStore.projectRoot)) {
+      throw new ValidationError('Teams are derived from agent configuration in v6.5 projects and cannot be edited manually')
+    }
+
     const index = app.fileStore.getIndex()
     const team = index.teams.find((t) => t.id === request.params.id)
     if (!team) throw new NotFoundError(`Team "${request.params.id}" not found`)
@@ -154,9 +176,14 @@ export async function teamsPlugin(app: FastifyInstance) {
     return { ok: true }
   })
 
-  // Delete team (YAML only, preserve party CSV)
+  // Delete team (v6 only — YAML only, preserve party CSV)
   app.delete<{ Params: { id: string } }>('/api/teams/:id', async (request) => {
     if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+
+    if (isV65Project(app.fileStore.projectRoot)) {
+      throw new ValidationError('Teams are derived from agent configuration in v6.5 projects and cannot be deleted manually')
+    }
+
     const index = app.fileStore.getIndex()
     const team = index.teams.find((t) => t.id === request.params.id)
     if (!team) throw new NotFoundError(`Team "${request.params.id}" not found`)
@@ -169,9 +196,14 @@ export async function teamsPlugin(app: FastifyInstance) {
     return { ok: true, id: request.params.id }
   })
 
-  // Update party CSV content
+  // Update party CSV content (v6 only — not supported in v6.5)
   app.put<{ Params: { id: string } }>('/api/teams/:id/party', async (request) => {
     if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+
+    if (isV65Project(app.fileStore.projectRoot)) {
+      throw new ValidationError('Party files are not supported in v6.5 projects')
+    }
+
     const index = app.fileStore.getIndex()
     const team = index.teams.find((t) => t.id === request.params.id)
     if (!team) throw new NotFoundError(`Team "${request.params.id}" not found`)

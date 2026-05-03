@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import type { SkillListItem, Skill } from '@bmad-studio/shared'
+import type { SkillListItem, Skill, CompiledSkillItem } from '@bmad-studio/shared'
 
 export function useSkills() {
   return useQuery({
@@ -9,6 +9,18 @@ export function useSkills() {
       const response = await fetch('/api/skills')
       if (!response.ok) throw new Error('Failed to fetch skills')
       return response.json() as Promise<SkillListItem[]>
+    },
+    staleTime: 30_000,
+  })
+}
+
+export function useCompiledSkills() {
+  return useQuery({
+    queryKey: ['skills', 'compiled'],
+    queryFn: async () => {
+      const response = await fetch('/api/skills/compiled')
+      if (!response.ok) throw new Error('Failed to fetch compiled skills')
+      return response.json() as Promise<CompiledSkillItem[]>
     },
     staleTime: 30_000,
   })

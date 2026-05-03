@@ -16,23 +16,31 @@ const TYPE_BADGE_STYLES: Record<string, string> = {
   'step-based': 'border-[var(--color-border-subtle)] text-[var(--color-muted)]',
   'agent-based': 'border-purple-400/50 text-purple-400',
   composite: 'border-blue-400/50 text-blue-400',
+  utility: 'border-amber-400/50 text-amber-400',
+}
+
+const TYPE_BADGE_LABELS: Record<string, string> = {
+  'step-based': 'Step',
+  'agent-based': 'Agent',
+  composite: 'Composite',
+  utility: 'Utility',
 }
 
 const TYPE_TOOLTIPS: Record<string, string> = {
   'step-based': `${WORKFLOW_TYPE_DEFINITIONS['step-based'].label}: ${WORKFLOW_TYPE_DEFINITIONS['step-based'].description}`,
   'agent-based': `${WORKFLOW_TYPE_DEFINITIONS['agent-based'].label}: ${WORKFLOW_TYPE_DEFINITIONS['agent-based'].description}`,
   composite: `${WORKFLOW_TYPE_DEFINITIONS.composite.label}: ${WORKFLOW_TYPE_DEFINITIONS.composite.description}`,
+  utility: `${WORKFLOW_TYPE_DEFINITIONS.utility.label}: ${WORKFLOW_TYPE_DEFINITIONS.utility.description}`,
 }
 
 export function WorkflowTypeBadge({ type }: { type?: WorkflowType }) {
   if (!type) return null
-  const label = type === 'step-based' ? 'Step' : type === 'agent-based' ? 'Agent' : 'Composite'
   return (
     <span
       title={TYPE_TOOLTIPS[type]}
       className={`px-2 py-0.5 rounded-full text-xs border cursor-help ${TYPE_BADGE_STYLES[type] ?? TYPE_BADGE_STYLES['step-based']}`}
     >
-      {label}
+      {TYPE_BADGE_LABELS[type] ?? type}
     </span>
   )
 }

@@ -3,22 +3,33 @@ import path from 'node:path'
 
 import { parse as parseToml } from 'smol-toml'
 import type { FastifyInstance } from 'fastify'
-import type { Skill, SkillListItem } from '@bmad-studio/shared'
+import type { Skill, SkillListItem, CompiledSkillItem } from '@bmad-studio/shared'
 
 import { NotFoundError, ValidationError, AppError } from '../core/errors.js'
 import { writeFile } from '../core/write-service.js'
+import { resolveSkillCustomization } from '../v65/customize-resolver.js'
 import { atomicWrite } from '../core/atomic-write.js'
 import { verifyMerge, probePython } from '../v65/python-bridge.js'
 
-/**
- * Derives the project root from a skill's absolute file path.
- * Skill paths are like: /absolute/path/to/project/_bmad/module/skills/foo/SKILL.md
- * We split on '/_bmad/' and take the left part.
- */
-function deriveProjectRoot(filePath: string): string {
-  const idx = filePath.indexOf('/_bmad/')
-  if (idx === -1) throw new Error(`Cannot derive project root from: ${filePath}`)
-  return filePath.slice(0, idx)
+function deriveProjectRoot(skillFilePath: string): string {
+  const parts = skillFilePath.split('/_bmad/')
+  if (parts.length >= 2) {
+    return parts[0]
+  }
+  let dir = path.dirname(skillFilePath)
+  while (true) {
+    const parent = path.dirname(dir)
+    if (parent === dir) break
+    const bmadCandidate = path.join(parent, '_bmad')
+    if (fs.existsSync(bmadCandidate) && fs.statSync(bmadCandidate).isDirectory()) {
+      const relative = path.relative(bmadCandidate, dir)
+      if (!relative.startsWith('..')) {
+        return parent
+      }
+    }
+    dir = parent
+  }
+  return path.dirname(skillFilePath)
 }
 
 function skillToListItem(skill: Skill): SkillListItem {
@@ -36,6 +47,28 @@ export async function skillsPlugin(app: FastifyInstance) {
     if (!('fileStore' in app)) return []
     const index = app.fileStore.getIndex()
     return index.skills.map(skillToListItem)
+  })
+
+  app.get('/api/skills/compiled', async (): Promise<CompiledSkillItem[]> => {
+    if (!('fileStore' in app)) return []
+    const index = app.fileStore.getIndex()
+    const agents: CompiledSkillItem[] = index.agents
+      .filter((a) => a.name || a.title)
+      .map((a) => ({
+        id: a.id,
+        name: a.name || a.title,
+        description: a.role ?? '',
+        module: a.module,
+        type: 'agent' as const,
+      }))
+    const workflows: CompiledSkillItem[] = index.workflows.map((w) => ({
+      id: w.id,
+      name: w.name,
+      description: w.description,
+      module: w.module,
+      type: 'workflow' as const,
+    }))
+    return [...agents, ...workflows]
   })
 
   app.get<{ Params: { id: string } }>('/api/skills/:id', async (request) => {
@@ -179,5 +212,41 @@ export async function skillsPlugin(app: FastifyInstance) {
     app.fileStore.clearPendingWrite(skill.filePath)
 
     return { ok: true, deleted: skill.id }
+  })
+
+  // Read layered customize.toml for a skill
+  app.get<{ Params: { id: string } }>('/api/skills/:id/customize', async (request) => {
+    if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+
+    const index = app.fileStore.getIndex()
+    const skill = index.skills.find((s) => s.id === request.params.id)
+    if (!skill) throw new NotFoundError(`Skill "${request.params.id}" not found`)
+
+    const skillPath = path.dirname(skill.filePath)
+    const skillName = path.basename(skillPath)
+    const projectRoot = deriveProjectRoot(skill.filePath)
+
+    const basePath = path.join(skillPath, 'customize.toml')
+    if (!fs.existsSync(basePath)) {
+      throw new NotFoundError(
+        `Skill "${request.params.id}" has no customize.toml — not customizable`,
+      )
+    }
+
+    // Read raw TOML strings for each layer
+    const base = fs.readFileSync(basePath, 'utf-8')
+
+    const teamPath = path.join(projectRoot, '_bmad', 'custom', `${skillName}.toml`)
+    const team = fs.existsSync(teamPath) ? fs.readFileSync(teamPath, 'utf-8') : null
+
+    const userPath = path.join(projectRoot, '_bmad', 'custom', `${skillName}.user.toml`)
+    const user = fs.existsSync(userPath) ? fs.readFileSync(userPath, 'utf-8') : null
+
+    // Resolve merged + provenance via resolveSkillCustomization.
+    // ManifestParseError (422) propagates naturally if a layer contains invalid TOML.
+    const resolved = resolveSkillCustomization(skillPath, projectRoot, { provenance: true })
+    const { merged, provenance } = resolved
+
+    return { base, team, user, merged, provenance }
   })
 }

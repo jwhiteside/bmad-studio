@@ -9,12 +9,14 @@ import { EmptyState } from '../../shared/EmptyState.js'
 import { EntityPageHeader } from '../../shared/EntityPageHeader.js'
 import { CardGrid } from '../../shared/EntityCard.js'
 import { SkeletonCard } from '../../shared/Skeleton.js'
+import { useProjectMode } from '../../lib/use-project-mode.js'
 
 export function AgentsPage() {
   const { data: agents, isLoading, error, refetch } = useAgents()
   const [activeModule, setActiveModule] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  const { isV65 } = useProjectMode()
 
   const modules = useMemo(() => {
     if (!agents) return []
@@ -93,12 +95,14 @@ export function AgentsPage() {
               >
                 Browse Modules
               </Link>
-              <button
-                onClick={() => setShowCreate(true)}
-                className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors"
-              >
-                New Agent
-              </button>
+              {!isV65 && (
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="px-4 py-2 text-sm rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors"
+                >
+                  New Agent
+                </button>
+              )}
             </>
           }
         />
@@ -122,13 +126,15 @@ export function AgentsPage() {
         onSearchChange={setSearch}
         filteredCount={activeModule !== 'all' || search ? filtered.length : undefined}
         actions={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            New Agent
-          </button>
+          !isV65 ? (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="px-4 py-2 text-sm font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              New Agent
+            </button>
+          ) : null
         }
       />
 

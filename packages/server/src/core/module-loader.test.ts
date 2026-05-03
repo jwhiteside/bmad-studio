@@ -6,7 +6,7 @@ import path from 'node:path'
 import type { FastifyInstance } from 'fastify'
 
 import { ModuleLoader, detectVersion, ManifestMissingError } from './module-loader.js'
-import type { EntityIndex } from '@bmad-studio/shared'
+import type { EntityIndex } from '../parsers/index-builder.js'
 
 const SKILL_MANIFEST_REL = path.join('_bmad', '_config', 'skill-manifest.csv')
 

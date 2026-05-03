@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { X, GitBranch, Users, FileOutput, FileInput, FileText, FolderOpen, Layers, ChevronDown, ChevronRight, Pencil, ArrowRight, BookMarked } from 'lucide-react'
+import { X, GitBranch, Users, FileOutput, FileInput, FileText, FolderOpen, Layers, ChevronDown, ChevronRight, Pencil, ArrowRight, BookMarked, Save } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
@@ -11,11 +11,16 @@ import { useWorkflowDetail } from './use-workflows.js'
 import { WorkflowTypeBadge } from './WorkflowsPage.js'
 import { EditWorkflowDialog } from './EditWorkflowDialog.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
+import { CodeMirrorEditor } from '../../shared/markdown-editor/CodeMirrorEditor.js'
+import { useWorkflowCustomize, useUpdateWorkflowCustomize } from './use-workflow-customize.js'
+import { useNotifications } from '../../layout/NotificationProvider.js'
 
 type WorkflowDetailPanelProps = {
   workflowId: string
   onClose: () => void
 }
+
+type WorkflowTab = 'overview' | 'customize'
 
 function extractRelativePath(filePath: string): string {
   const bmadIndex = filePath.lastIndexOf('/_bmad/')
@@ -64,6 +69,8 @@ function groupStepsByVariant(steps: WorkflowStep[]): StepGroup[] {
 
 export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanelProps) {
   const { data: workflow, isLoading } = useWorkflowDetail(workflowId)
+  const { notify } = useNotifications()
+  const [activeTab, setActiveTab] = useState<WorkflowTab>('overview')
   const [showEdit, setShowEdit] = useState(false)
   const [expandedStep, setExpandedStep] = useState<number | null>(null)
   const [stepContent, setStepContent] = useState<string | null>(null)
@@ -79,6 +86,39 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
   const stepAbortRef = useRef<AbortController | null>(null)
   const templateAbortRef = useRef<AbortController | null>(null)
   const supportingFileAbortRef = useRef<AbortController | null>(null)
+
+  // Customize TOML state
+  const { data: customizeData, error: customizeError, isLoading: customizeLoading } = useWorkflowCustomize(workflowId)
+  const updateCustomize = useUpdateWorkflowCustomize(workflowId)
+  const [customizeContent, setCustomizeContent] = useState<string>('')
+  const customizeLoadedRef = useRef(false)
+
+  // Sync editor content when customize data first loads
+  useEffect(() => {
+    if (customizeData && !customizeLoadedRef.current) {
+      setCustomizeContent(customizeData.raw)
+      customizeLoadedRef.current = true
+    }
+  }, [customizeData])
+
+  // Reset when workflowId changes
+  useEffect(() => {
+    customizeLoadedRef.current = false
+    setCustomizeContent('')
+    setActiveTab('overview')
+  }, [workflowId])
+
+  const isNotV65 = customizeError && (customizeError as Error & { isNotV65?: boolean }).isNotV65 === true
+
+  async function handleCustomizeSave() {
+    try {
+      await updateCustomize.mutateAsync(customizeContent)
+      notify('success', 'customize.toml saved')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save'
+      notify('error', msg)
+    }
+  }
 
   // Cancel in-flight fetches on unmount
   useEffect(() => {
@@ -276,6 +316,72 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
 
       {workflow && (
         <div className="p-6 space-y-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 65px)' }}>
+
+          {/* Tab bar — only show Customize tab for v6.5 projects */}
+          {!isNotV65 && (
+            <div className="flex gap-1 bg-[var(--color-surface-raised)] rounded-md p-1 border border-[var(--color-border-subtle)]">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  activeTab === 'overview'
+                    ? 'bg-[var(--color-bg)] text-[var(--color-text)] font-bold shadow-sm'
+                    : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('customize')}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  activeTab === 'customize'
+                    ? 'bg-[var(--color-bg)] text-[var(--color-text)] font-bold shadow-sm'
+                    : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                Customize
+              </button>
+            </div>
+          )}
+
+          {/* Customize tab content */}
+          {activeTab === 'customize' && !isNotV65 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-sm font-bold">customize.toml</h3>
+                  <p className="text-xs text-[var(--color-muted)] mt-0.5">
+                    Override <code className="font-[var(--font-mono)]">[workflow]</code> behaviour for this project.
+                  </p>
+                </div>
+                <button
+                  onClick={() => void handleCustomizeSave()}
+                  disabled={updateCustomize.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors"
+                >
+                  <Save size={11} />
+                  {updateCustomize.isPending ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border-subtle)] overflow-hidden" style={{ height: '400px' }}>
+                {customizeLoading ? (
+                  <div className="h-full bg-[var(--color-surface-raised)] animate-pulse" />
+                ) : (
+                  <CodeMirrorEditor
+                    content={customizeContent}
+                    onChange={setCustomizeContent}
+                    onSave={() => void handleCustomizeSave()}
+                    language="plaintext"
+                    placeholder={'[workflow]\non_complete = ""\n'}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Overview tab content */}
+          {activeTab === 'overview' && (
+            <>
+
           {workflow.description && (
             <div>
               <p className="text-sm text-[var(--color-muted)]">{workflow.description}</p>
@@ -568,6 +674,26 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
             </div>
           )}
 
+          {/* Sub-Agents — workflow-scoped LLM instruction files */}
+          {workflow.subAgents && workflow.subAgents.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold mb-3">Sub-Agents ({workflow.subAgents.length})</h3>
+              <div className="space-y-1">
+                {workflow.subAgents.map((sa) => (
+                  <div
+                    key={sa.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]"
+                    title={sa.filePath}
+                  >
+                    <Users size={14} className="text-purple-400" />
+                    <span className="text-sm">{sa.name}</span>
+                    <span className="ml-auto text-[10px] text-[var(--color-muted)]">{sa.id}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Agent-based: Agents & Resources with clickable files */}
           {workflow.type === 'agent-based' && supportingFileGroups.length > 0 && (
             <div>
@@ -656,6 +782,9 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
             <GitBranch size={12} />
             <span className="font-[var(--font-mono)]">{workflow.filePath}</span>
           </div>
+
+            </>
+          )}
         </div>
       )}
     </aside>

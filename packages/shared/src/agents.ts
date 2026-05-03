@@ -12,6 +12,8 @@ export type Agent = {
   icon?: string
   role: string
   module?: string
+  team?: string
+  description?: string
   discussion: boolean
   webskip: boolean
   hasSidecar: boolean
