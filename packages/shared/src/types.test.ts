@@ -168,6 +168,7 @@ describe('shared types', () => {
       | 'INTERNAL_ERROR'
       | 'MANIFEST_MISSING'
       | 'MANIFEST_PARSE_ERROR'
+      | 'WRITE_FAILED'
     >()
   })
 })

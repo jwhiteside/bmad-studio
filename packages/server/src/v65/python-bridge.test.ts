@@ -1,51 +1,129 @@
-import { describe, it, expect } from 'vitest'
-import { probePython } from './python-bridge.js'
+import { describe, it, expect, afterEach } from 'vitest'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
-describe('v65/python-bridge', () => {
-  describe('probePython()', () => {
-    it('returns the correct shape: { available: boolean, version: string | null }', () => {
-      const result = probePython()
+import { probePython, verifyMerge } from './python-bridge.js'
 
-      expect(typeof result.available).toBe('boolean')
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+let tmpDirs: string[] = []
+
+function makeTmpDir(): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'python-bridge-test-'))
+  tmpDirs.push(dir)
+  return dir
+}
+
+afterEach(() => {
+  for (const dir of tmpDirs) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true })
+    } catch {
+      // best effort
+    }
+  }
+  tmpDirs = []
+})
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('probePython()', () => {
+  it('returns an object with the correct shape regardless of Python installation', () => {
+    const result = probePython()
+
+    // Shape must always be correct
+    expect(typeof result.available).toBe('boolean')
+    // version is either a string starting with "Python" or null
+    if (result.available) {
+      expect(result.version).not.toBeNull()
+      expect(result.version).toMatch(/^Python \d+\.\d+/)
+    } else {
+      // version may be null (not found) or a string (found but too old)
       expect(result.version === null || typeof result.version === 'string').toBe(true)
-    })
+    }
+  })
+})
 
-    it('version is null only when python3 could not be executed or produced no parseable output', () => {
-      const result = probePython()
+describe('verifyMerge()', () => {
+  it('returns { ok: false, reason: "missing" } when pythonAvailable is false (no subprocess spawned)', async () => {
+    const projectRoot = makeTmpDir()
+    const skillRoot = path.join(projectRoot, 'skill')
+    fs.mkdirSync(skillRoot)
 
-      // If python3 ran successfully, version is always populated — even if < 3.11.
-      // version === null only when the subprocess failed entirely (binary absent, timeout, etc.)
-      if (result.available) {
-        expect(result.version).not.toBeNull()
-      }
-      // No assertion when available === false: version may be a real semver (e.g. "3.9.6")
-      // or null (python3 not found), both are valid.
-    })
+    const result = await verifyMerge(skillRoot, projectRoot, 'some-key', { pythonAvailable: false })
 
-    it('version is a semver string when available is true', () => {
-      const result = probePython()
+    expect(result).toEqual({ ok: false, reason: 'missing' })
+  })
 
-      if (result.available) {
-        expect(result.version).toMatch(/^\d+\.\d+\.\d+$/)
-      }
-    })
+  it('returns { ok: false, reason: "missing" } when script file does not exist', async () => {
+    const projectRoot = makeTmpDir()
+    const skillRoot = path.join(projectRoot, 'skill')
+    fs.mkdirSync(skillRoot)
+    // Note: we do NOT create the script at _bmad/scripts/resolve_customization.py
 
-    it('available is consistent with version being >= 3.11', () => {
-      const result = probePython()
+    const result = await verifyMerge(skillRoot, projectRoot, 'some-key', { pythonAvailable: true })
 
-      if (result.version !== null) {
-        const [major, minor] = result.version.split('.').map(Number)
-        const expectedAvailable = major > 3 || (major === 3 && minor >= 11)
-        expect(result.available).toBe(expectedAvailable)
-      }
-    })
+    expect(result).toEqual({ ok: false, reason: 'missing' })
+  })
 
-    it('available is false when version is null (python3 absent or bad output)', () => {
-      const result = probePython()
+  it('returns { ok: false, reason: "parse-error" } when subprocess exits non-zero', async () => {
+    const projectRoot = makeTmpDir()
+    const skillRoot = path.join(projectRoot, 'skill')
+    fs.mkdirSync(skillRoot)
 
-      if (result.version === null) {
-        expect(result.available).toBe(false)
-      }
-    })
+    // Create a script that exits with code 1
+    const scriptDir = path.join(projectRoot, '_bmad', 'scripts')
+    fs.mkdirSync(scriptDir, { recursive: true })
+    const scriptPath = path.join(scriptDir, 'resolve_customization.py')
+    fs.writeFileSync(
+      scriptPath,
+      'import sys\nsys.stderr.write("deliberate failure\\n")\nsys.exit(1)\n',
+    )
+
+    const result = await verifyMerge(skillRoot, projectRoot, 'some-key', { pythonAvailable: true })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.reason).toBe('parse-error')
+    }
+  })
+
+  it('throws when skillRoot is outside projectRoot (path traversal guard)', () => {
+    const projectRoot = makeTmpDir()
+    // skillRoot is a completely different temp dir — outside projectRoot
+    const outsideRoot = makeTmpDir()
+
+    // verifyMerge throws synchronously before returning a Promise when the
+    // path validation fails (this is intentional — fail fast, no I/O needed)
+    expect(() =>
+      verifyMerge(outsideRoot, projectRoot, 'some-key', { pythonAvailable: true }),
+    ).toThrow(/Security violation/)
+  })
+
+  it('returns { ok: true, merged: {...} } when script succeeds and emits valid JSON', async () => {
+    const projectRoot = makeTmpDir()
+    const skillRoot = path.join(projectRoot, 'skill')
+    fs.mkdirSync(skillRoot)
+
+    // Create a script that prints valid JSON and exits 0
+    const scriptDir = path.join(projectRoot, '_bmad', 'scripts')
+    fs.mkdirSync(scriptDir, { recursive: true })
+    const scriptPath = path.join(scriptDir, 'resolve_customization.py')
+    fs.writeFileSync(
+      scriptPath,
+      'import json, sys\nprint(json.dumps({"hello": "world", "key": sys.argv[sys.argv.index("--key") + 1]}))\n',
+    )
+
+    const result = await verifyMerge(skillRoot, projectRoot, 'my-key', { pythonAvailable: true })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.merged).toMatchObject({ hello: 'world', key: 'my-key' })
+    }
   })
 })

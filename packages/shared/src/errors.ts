@@ -8,6 +8,8 @@ export type ErrorCode =
   | 'INTERNAL_ERROR'
   | 'MANIFEST_MISSING'
   | 'MANIFEST_PARSE_ERROR'
+  | 'WRITE_FAILED'
+  | 'CUSTOMIZE_PARSE_ERROR'
 
 export type ApiError = {
   error: {
