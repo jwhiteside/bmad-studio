@@ -9,6 +9,9 @@ export type {
   Workflow,
   WorkflowStep,
   WorkflowListItem,
+  WorkflowInput,
+  WorkflowOutput,
+  WorkflowIo,
 } from './workflows.js'
 export { WORKFLOW_TYPE_DEFINITIONS } from './workflows.js'
 export type {

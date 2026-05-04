@@ -463,11 +463,75 @@ type OverviewData = {
   }
 }
 
+type WfStatusMap = Record<string, 'ready' | 'blocked' | 'already-run' | 'unknown'>
+
+type WfRef = { id: string; name: string; stepCount: number; module?: string; type?: string; phase?: string; hookCount?: number }
+
+const STATUS_CHIP_STYLES: Record<Exclude<WfStatusMap[string], 'unknown'>, string> = {
+  ready: 'bg-[var(--color-success)]/10 border-[var(--color-success)]/30 text-[var(--color-success)]',
+  blocked: 'bg-amber-400/10 border-amber-400/30 text-amber-400',
+  'already-run': 'bg-[var(--color-surface-raised)] border-[var(--color-border-subtle)] text-[var(--color-muted)]',
+}
+
+function WorkflowReadinessPanel({ workflows, statuses }: { workflows: WfRef[]; statuses: WfStatusMap }) {
+  const navigate = useNavigate()
+  if (workflows.length === 0 || Object.keys(statuses).length === 0) return null
+
+  const counts: Record<string, number> = { ready: 0, blocked: 0, 'already-run': 0, unknown: 0 }
+  for (const wf of workflows) counts[statuses[wf.id] ?? 'unknown']++
+
+  const hasAny = counts.ready + counts.blocked + counts['already-run'] > 0
+  if (!hasAny) return null
+
+  // Next recommended: earliest phase ready workflow
+  const readyWfs = workflows
+    .filter((wf) => statuses[wf.id] === 'ready')
+    .sort((a, b) => (a.phase ?? 'z').localeCompare(b.phase ?? 'z'))
+  const next = readyWfs[0]
+
+  return (
+    <div className="mb-6 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] p-5">
+      <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-4">Workflow Readiness</h2>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {(['ready', 'blocked', 'already-run'] as const).map((s) => (
+          counts[s] > 0 && (
+            <button
+              key={s}
+              onClick={() => navigate(`/workflows?status=${s}`)}
+              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border font-bold transition-colors hover:opacity-80 ${STATUS_CHIP_STYLES[s]}`}
+            >
+              {counts[s]} {s === 'ready' ? 'Ready' : s === 'blocked' ? 'Blocked' : 'Already Run'}
+            </button>
+          )
+        ))}
+      </div>
+
+      {next && (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-success)]/20">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-success)] mb-0.5">Next recommended</p>
+            <p className="text-sm font-bold">{next.name}</p>
+            {next.phase && <p className="text-xs text-[var(--color-muted)] mt-0.5">{next.phase}</p>}
+          </div>
+          <button
+            onClick={() => navigate(`/workflows?detail=${next.id}`)}
+            className="shrink-0 text-xs font-bold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors whitespace-nowrap"
+          >
+            View &rarr;
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function OverviewPage() {
   const [data, setData] = useState<OverviewData | null>(null)
   const [commands, setCommands] = useState<CommandItem[]>([])
   const [health, setHealth] = useState<ProjectHealth | null>(null)
   const [loading, setLoading] = useState(true)
+  const [wfStatuses, setWfStatuses] = useState<WfStatusMap>({})
   const { isV65, isLoading: modeLoading } = useProjectMode()
 
   useEffect(() => {
@@ -476,11 +540,28 @@ export function OverviewPage() {
       fetch('/api/commands').then((r) => r.json()).catch(() => []),
       fetch('/api/project-health').then((r) => r.json()).catch(() => null),
     ])
-      .then(([overview, cmds, healthData]) => {
+      .then(async ([overview, cmds, healthData]) => {
         setData(overview as OverviewData)
         setCommands(cmds as CommandItem[])
         if (healthData) setHealth(healthData as ProjectHealth)
         setLoading(false)
+
+        // Fetch statuses for readiness panel (fire and forget)
+        const wfs = (overview as OverviewData).sections?.process?.workflows ?? []
+        if (wfs.length > 0) {
+          const results = await Promise.all(
+            wfs.map(async (wf: { id: string }) => {
+              try {
+                const resp = await fetch(`/api/workflows/${wf.id}/status`)
+                const d = resp.ok ? (await resp.json() as { status: WfStatusMap[string] }) : null
+                return [wf.id, d?.status ?? 'unknown'] as [string, WfStatusMap[string]]
+              } catch {
+                return [wf.id, 'unknown'] as [string, 'unknown']
+              }
+            }),
+          )
+          setWfStatuses(Object.fromEntries(results))
+        }
       })
       .catch(() => setLoading(false))
   }, [])
@@ -555,6 +636,12 @@ export function OverviewPage() {
       <div className="space-y-0">
         {/* Project Status — shown when health data exists */}
         {health && <ProjectStatusPanel health={health} />}
+
+        {/* Workflow Readiness Panel */}
+        <WorkflowReadinessPanel
+          workflows={data.sections?.process?.workflows ?? []}
+          statuses={wfStatuses}
+        />
 
         {/* Phase Timeline */}
         {commands.length > 0 && <PhaseTimeline commands={commands} />}

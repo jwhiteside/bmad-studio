@@ -10,6 +10,9 @@ import type {
   WorkflowTemplate,
   WorkflowSubWorkflow,
   WorkflowType,
+  WorkflowInput,
+  WorkflowOutput,
+  WorkflowIo,
 } from '@bmad-studio/shared'
 
 import type { ParseResult } from './config-parser.js'
@@ -245,6 +248,115 @@ function parseAgentBasedWorkflow(dirPath: string): ParseResult<Workflow> {
   return { ok: true, data: workflow }
 }
 
+// ---------------------------------------------------------------------------
+// io block parsing
+// ---------------------------------------------------------------------------
+
+type RawIoInput = {
+  id?: unknown
+  description?: unknown
+  path_patterns?: unknown
+  required?: unknown
+  file_type?: unknown
+}
+
+type RawIoOutput = {
+  id?: unknown
+  description?: unknown
+  path_pattern?: unknown
+  file_type?: unknown
+}
+
+function parseIoFromFrontmatter(fm: Record<string, unknown>): WorkflowIo | undefined {
+  const raw = fm['io']
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+
+  const rawIo = raw as Record<string, unknown>
+  const rawInputs = Array.isArray(rawIo['inputs']) ? rawIo['inputs'] as RawIoInput[] : []
+  const rawOutputs = Array.isArray(rawIo['outputs']) ? rawIo['outputs'] as RawIoOutput[] : []
+
+  const inputs: WorkflowInput[] = rawInputs
+    .filter((r) => typeof r['id'] === 'string')
+    .map((r) => ({
+      id: String(r['id']),
+      description: typeof r['description'] === 'string' ? r['description'] : '',
+      pathPatterns: Array.isArray(r['path_patterns'])
+        ? (r['path_patterns'] as unknown[]).filter((p) => typeof p === 'string').map(String)
+        : typeof r['path_patterns'] === 'string' ? [r['path_patterns']] : [],
+      required: r['required'] !== false,
+      fileType: typeof r['file_type'] === 'string' ? r['file_type'] : undefined,
+    }))
+
+  const outputs: WorkflowOutput[] = rawOutputs
+    .filter((r) => typeof r['id'] === 'string')
+    .map((r) => ({
+      id: String(r['id']),
+      description: typeof r['description'] === 'string' ? r['description'] : '',
+      pathPattern: typeof r['path_pattern'] === 'string' ? r['path_pattern'] : '',
+      fileType: typeof r['file_type'] === 'string' ? r['file_type'] : undefined,
+    }))
+
+  if (inputs.length === 0 && outputs.length === 0) return undefined
+  return { inputs, outputs }
+}
+
+// Parses an INITIALISATION / INITIALIZATION markdown table as a fallback for io.
+// Expects columns: Input | Description | Required (any order).
+const INIT_HEADING_RE = /^##\s+INITIALI[SZ]ATION/im
+const TABLE_ROW_RE = /^\|(.+)\|$/
+
+function parseIoFromMarkdown(body: string): WorkflowIo | undefined {
+  const headingMatch = INIT_HEADING_RE.exec(body)
+  if (!headingMatch) return undefined
+
+  const afterHeading = body.slice(headingMatch.index + headingMatch[0].length)
+  const lines = afterHeading.split('\n')
+
+  // Find the table: look for a pipe-delimited header row
+  let headerIdx = -1
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (TABLE_ROW_RE.test(line) && line.toLowerCase().includes('input')) {
+      headerIdx = i
+      break
+    }
+    // Stop if we hit another heading
+    if (/^#/.test(line) && i > 0) break
+  }
+
+  if (headerIdx < 0) return undefined
+
+  const headerRow = lines[headerIdx].trim()
+  const cols = headerRow.split('|').slice(1, -1).map((c) => c.trim().toLowerCase())
+  const inputIdx = cols.findIndex((c) => c.includes('input') || c.includes('artifact') || c.includes('file'))
+  const descIdx = cols.findIndex((c) => c.includes('desc') || c.includes('detail'))
+  const reqIdx = cols.findIndex((c) => c.includes('req') || c.includes('required'))
+
+  if (inputIdx < 0) return undefined
+
+  const inputs: WorkflowInput[] = []
+  // Skip separator row (idx + 1) and read data rows
+  for (let i = headerIdx + 2; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!TABLE_ROW_RE.test(line)) break
+    const cells = line.split('|').slice(1, -1).map((c) => c.trim())
+    const id = cells[inputIdx]?.replace(/\*\*/g, '').trim()
+    if (!id || id === '---') continue
+    const description = descIdx >= 0 ? (cells[descIdx] ?? '') : ''
+    const reqCell = reqIdx >= 0 ? (cells[reqIdx] ?? '') : ''
+    const required = !reqCell || !/optional|no/i.test(reqCell)
+    inputs.push({
+      id: id.toLowerCase().replace(/\s+/g, '-'),
+      description,
+      pathPatterns: [],
+      required,
+    })
+  }
+
+  if (inputs.length === 0) return undefined
+  return { inputs, outputs: [] }
+}
+
 export function parseWorkflow(dirPath: string): ParseResult<Workflow> {
   try {
     const type = classifyWorkflowType(dirPath)
@@ -308,6 +420,9 @@ export function parseWorkflow(dirPath: string): ParseResult<Workflow> {
     const entryPoint = (frontmatter.entry_point as string) || steps[0]?.filePath || ''
     const phase = extractPhase(dirPath)
 
+    const io = parseIoFromFrontmatter(frontmatter as Record<string, unknown>)
+      ?? parseIoFromMarkdown(body)
+
     const workflow: Workflow = {
       id: path.basename(dirPath),
       name,
@@ -321,6 +436,7 @@ export function parseWorkflow(dirPath: string): ParseResult<Workflow> {
       templates: discoverTemplates(dirPath),
       subWorkflows: discoverSubWorkflows(dirPath),
       supportingFiles: discoverSupportingFiles(dirPath),
+      io: io ?? undefined,
     }
 
     return { ok: true, data: workflow }

@@ -63,6 +63,26 @@ export type WorkflowStep = {
   variantSet?: string
 }
 
+export type WorkflowInput = {
+  id: string
+  description: string
+  pathPatterns: string[]
+  required: boolean
+  fileType?: string
+}
+
+export type WorkflowOutput = {
+  id: string
+  description: string
+  pathPattern: string
+  fileType?: string
+}
+
+export type WorkflowIo = {
+  inputs: WorkflowInput[]
+  outputs: WorkflowOutput[]
+}
+
 export type Workflow = {
   id: string
   name: string
@@ -79,6 +99,7 @@ export type Workflow = {
   subAgents?: WorkflowSubAgent[]
   hooks?: WorkflowHooks
   persistentFacts?: string[]
+  io?: WorkflowIo
 }
 
 export type WorkflowListItem = {

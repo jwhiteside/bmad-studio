@@ -7,7 +7,8 @@ import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
 import { WORKFLOW_TYPE_DEFINITIONS } from '@bmad-studio/shared'
 import type { WorkflowStep, WorkflowHooks, HookEntry } from '@bmad-studio/shared'
 
-import { useWorkflowDetail } from './use-workflows.js'
+import { useWorkflowDetail, useWorkflowStatus } from './use-workflows.js'
+import type { WorkflowStatusResult } from './use-workflows.js'
 import { WorkflowTypeBadge } from './WorkflowsPage.js'
 import { HOOK_PRESETS, PRESET_CATEGORIES, resolvePreset } from './hook-presets.js'
 import type { HookPreset } from './hook-presets.js'
@@ -442,6 +443,7 @@ function HooksPanel({ workflowId, initialHooks, isV65 }: {
 
 export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanelProps) {
   const { data: workflow, isLoading } = useWorkflowDetail(workflowId)
+  const { data: workflowStatus } = useWorkflowStatus(workflowId)
   const { notify } = useNotifications()
   const [activeTab, setActiveTab] = useState<WorkflowTab>('overview')
   const [showEdit, setShowEdit] = useState(false)
@@ -810,8 +812,64 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
             </div>
           )}
 
-          {/* Anatomy: I/O summary */}
-          {(allInputs.length > 0 || allOutputs.length > 0) && (
+          {/* I/O: rich status table (when declared io exists) or anatomy chips fallback */}
+          {workflowStatus && (workflowStatus.inputs.length > 0 || workflowStatus.outputs.length > 0) ? (
+            <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-4 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)]">Inputs / Outputs</h3>
+
+              {workflowStatus.inputs.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2 flex items-center gap-1"><FileInput size={10} /> Required inputs</p>
+                  <div className="space-y-2">
+                    {(workflowStatus.inputs as WorkflowStatusResult['inputs']).map((inp) => {
+                      const statusColor = inp.status === 'present' ? 'text-[var(--color-success)]' : inp.status === 'thin' ? 'text-amber-400' : 'text-[var(--color-error)]'
+                      const statusLabel = inp.status === 'present' ? 'Present' : inp.status === 'thin' ? 'Thin' : 'Missing'
+                      return (
+                        <div key={inp.id} className="flex items-start gap-2 px-2 py-2 rounded-md bg-[var(--color-bg)] border border-[var(--color-border-subtle)]">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <code className="text-xs font-[var(--font-mono)] text-[var(--color-accent)]">{inp.id}</code>
+                              <span className={`text-[10px] font-bold ${statusColor}`}>{statusLabel}</span>
+                              {!inp.required && <span className="text-[10px] text-[var(--color-muted)]">optional</span>}
+                            </div>
+                            {inp.description && <p className="text-[10px] text-[var(--color-muted)] mt-0.5">{inp.description}</p>}
+                            {inp.qualityNotes?.map((n) => (
+                              <p key={n} className="text-[10px] text-amber-400 mt-0.5">{n}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {workflowStatus.outputs.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)] mb-2 flex items-center gap-1"><FileOutput size={10} /> Outputs</p>
+                  <div className="space-y-2">
+                    {(workflowStatus.outputs as WorkflowStatusResult['outputs']).map((out) => (
+                      <div key={out.id} className="flex items-start gap-2 px-2 py-2 rounded-md bg-[var(--color-bg)] border border-[var(--color-border-subtle)]">
+                        <div className="flex-1 min-w-0">
+                          <code className="text-xs font-[var(--font-mono)] text-[var(--color-accent)]">{out.id}</code>
+                          {out.description && <p className="text-[10px] text-[var(--color-muted)] mt-0.5">{out.description}</p>}
+                          {out.files.length > 0 ? (
+                            <div className="mt-1 space-y-0.5">
+                              {out.files.map((f) => (
+                                <p key={f.path} className="text-[10px] text-[var(--color-success)] font-[var(--font-mono)] truncate">{f.path.split('/').slice(-2).join('/')}</p>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-[var(--color-muted)] mt-0.5">None yet</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (allInputs.length > 0 || allOutputs.length > 0) && (
             <div className="rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] p-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)] mb-3">Inputs / Outputs</h3>
               <div className="space-y-2">
@@ -1061,6 +1119,27 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
                     <Users size={14} className="text-purple-400" />
                     <span className="text-sm">{sa.name}</span>
                     <span className="ml-auto text-[10px] text-[var(--color-muted)]">{sa.id}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Downstream consumers */}
+          {workflowStatus?.downstream && workflowStatus.downstream.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold mb-3">Downstream Consumers ({workflowStatus.downstream.length})</h3>
+              <p className="text-xs text-[var(--color-muted)] mb-2">Workflows that use this workflow&rsquo;s outputs as inputs.</p>
+              <div className="space-y-1">
+                {(workflowStatus.downstream as WorkflowStatusResult['downstream'])!.map((d) => (
+                  <div
+                    key={d.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]"
+                  >
+                    <GitBranch size={13} className="text-[var(--color-muted)] shrink-0" />
+                    <span className="text-sm flex-1">{d.name}</span>
+                    {d.module && <span className="text-[10px] text-[var(--color-muted)] px-1.5 py-0.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)]">{d.module}</span>}
+                    <span className="text-[10px] text-[var(--color-muted)] font-[var(--font-mono)]">via {d.inputId}</span>
                   </div>
                 ))}
               </div>
