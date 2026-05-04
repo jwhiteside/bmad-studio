@@ -8,6 +8,7 @@ import type { WorkflowListItem, WorkflowHooks, HookEntry } from '@bmad-studio/sh
 import { NotFoundError, ValidationError } from '../core/errors.js'
 import { writeFile } from '../core/write-service.js'
 import { atomicWrite } from '../core/atomic-write.js'
+import { computeWorkflowStatus } from '../core/workflow-status.js'
 
 // ---------------------------------------------------------------------------
 // Hook TOML serialisation helpers
@@ -352,6 +353,18 @@ export async function workflowsPlugin(app: FastifyInstance) {
       }
 
       return { groups }
+    },
+  )
+
+  // Workflow status — resolves io block against filesystem
+  app.get<{ Params: { id: string } }>(
+    '/api/workflows/:id/status',
+    async (request) => {
+      if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+      const index = app.fileStore.getIndex()
+      const workflow = index.workflows.find((w) => w.id === request.params.id)
+      if (!workflow) throw new NotFoundError(`Workflow "${request.params.id}" not found`)
+      return computeWorkflowStatus(workflow.io, app.fileStore.projectRoot)
     },
   )
 
