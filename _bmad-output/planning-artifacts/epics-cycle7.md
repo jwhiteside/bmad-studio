@@ -639,7 +639,17 @@ AC:
 
 ---
 
-## E48 — Authoring Linters
+## E48 — UI and Design System Update (scope TBD)
+
+**Goal:** Update the Studio UI to a new design system. Scope to be defined after E47 ships.
+
+**Status:** Placeholder — details deferred until after E47 (Setup Wizards Phase 1) is complete. No stories defined yet.
+
+**Note:** Owner will provide design system details after E47 is delivered. This epic is intentionally unsized.
+
+---
+
+## E49 — Authoring Linters
 
 **Goal:** Extend linting to agent personas, workflows, and modules. Show findings in existing detail panels.
 
@@ -647,7 +657,7 @@ AC:
 
 ### Stories
 
-**48.1 — Agent persona linter**
+**49.1 — Agent persona linter**
 Implement AG- rules from `[Reference] Studio Content - Linter Rules` using the engine from E45.
 
 Add lint findings to `AgentDetail.tsx`: new "Quality" tab or inline sidebar panel with findings list. Show aggregate severity badge on the Agents list card (red dot if errors, amber if warnings).
@@ -659,7 +669,7 @@ AC:
 
 ---
 
-**48.2 — Workflow linter**
+**49.2 — Workflow linter**
 Implement WF- rules. Show findings in `WorkflowDetailPanel.tsx` (new "Quality" section).
 
 AC:
@@ -668,7 +678,7 @@ AC:
 
 ---
 
-**48.3 — Module linter**
+**49.3 — Module linter**
 Implement MD- rules. Surface findings in Modules settings page for each installed module.
 
 AC:
@@ -677,7 +687,7 @@ AC:
 
 ---
 
-**48.4 — Lint score on Overview dashboard**
+**49.4 — Lint score on Overview dashboard**
 Add a small "Authoring quality" panel to Home showing: count of errors and warnings across all agents/workflows, with link to the worst offender.
 
 AC:
@@ -687,7 +697,7 @@ AC:
 
 ---
 
-## E49 — Setup Wizards Phase 2 (Deferred)
+## E50 — Setup Wizards Phase 2 (Deferred)
 
 Brownfield automatic inference. No stories. Revisit after real usage data exists.
 

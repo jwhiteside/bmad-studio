@@ -37,8 +37,9 @@ Everything in Cycle 7 serves at least one of these.
 | E45 | Project Context Editor | P0 | MVP, ships fourth |
 | E46 | Pattern Library Integration | P0 | MVP, ships fifth |
 | E47 | Setup Wizards Phase 1 | P1 | Post-MVP |
-| E48 | Authoring Linters | P2 | Post-MVP |
-| E49 | Setup Wizards Phase 2 | — | Deferred, no timeline |
+| E48 | UI and Design System Update | P0 | Scope TBD after E47 |
+| E49 | Authoring Linters | P2 | Post-MVP |
+| E50 | Setup Wizards Phase 2 | — | Deferred, no timeline |
 
 ---
 
@@ -229,7 +230,23 @@ Requires E46 (Pattern Library) to be merged first. Can be stubbed against a hard
 
 ---
 
-## E48 — Authoring Linters
+## E48 — UI and Design System Update
+
+### Problem
+
+New design system available. Studio's current Tailwind + shadcn/ui implementation needs to be updated to align with it.
+
+### Goal
+
+Migrate Studio's UI to the new design system. Scope and details to be provided by the owner after E47 (Setup Wizards Phase 1) ships.
+
+### Status
+
+**Placeholder — no stories defined.** Design system details will be shared after E47 is complete. This epic will be fully specced at that point before implementation begins.
+
+---
+
+## E49 — Authoring Linters
 
 ### Problem
 
@@ -252,7 +269,7 @@ Requires E45 linter engine.
 
 ---
 
-## E49 — Setup Wizards Phase 2 (Deferred)
+## E50 — Setup Wizards Phase 2 (Deferred)
 
 Automatic brownfield inference: manifest scanning, convention detection, ADR candidate identification. No stories defined. Revisit when real usage data exists to tune heuristics.
 

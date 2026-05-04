@@ -399,7 +399,7 @@ development_status:
   41-3-navigation-restructure: done
   epic-41-retrospective: optional
 
-  # ─── Cycle 7 (E42–E49) ───────────────────────────────────────────────────────
+  # ─── Cycle 7 (E42–E50) ───────────────────────────────────────────────────────
   # PRD: _bmad-output/planning-artifacts/prd-cycle7-addendum.md
   # Architecture: _bmad-output/planning-artifacts/architecture-cycle7-notes.md
   # Epics: _bmad-output/planning-artifacts/epics-cycle7.md
@@ -457,13 +457,16 @@ development_status:
   47-4-brownfield-wizard-manual-mode: backlog
   epic-47-retrospective: optional
 
-  # Epic 48: Authoring Linters
+  # Epic 48: UI and Design System Update (scope TBD after E47)
   epic-48: backlog
-  48-1-agent-persona-linter: backlog
-  48-2-workflow-linter: backlog
-  48-3-module-linter: backlog
-  48-4-lint-score-on-overview-dashboard: backlog
-  epic-48-retrospective: optional
 
-  # Epic 49: Setup Wizards Phase 2 (deferred — no stories yet)
+  # Epic 49: Authoring Linters
   epic-49: backlog
+  49-1-agent-persona-linter: backlog
+  49-2-workflow-linter: backlog
+  49-3-module-linter: backlog
+  49-4-lint-score-on-overview-dashboard: backlog
+  epic-49-retrospective: optional
+
+  # Epic 50: Setup Wizards Phase 2 (deferred — no stories yet)
+  epic-50: backlog
