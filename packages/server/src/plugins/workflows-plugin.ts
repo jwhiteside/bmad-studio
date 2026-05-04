@@ -192,15 +192,23 @@ export async function workflowsPlugin(app: FastifyInstance) {
     if (!('fileStore' in app)) return []
     const index = app.fileStore.getIndex()
     return index.workflows.map(
-      (w): WorkflowListItem => ({
-        id: w.id,
-        name: w.name,
-        description: w.description,
-        module: w.module,
-        stepCount: w.steps.length,
-        type: w.type,
-        phase: w.phase,
-      }),
+      (w): WorkflowListItem => {
+        const hookCount = w.hooks
+          ? (w.hooks.activationStepsPrepend?.length ?? 0) +
+            (w.hooks.activationStepsAppend?.length ?? 0) +
+            (w.hooks.onComplete?.length ?? 0)
+          : 0
+        return {
+          id: w.id,
+          name: w.name,
+          description: w.description,
+          module: w.module,
+          stepCount: w.steps.length,
+          type: w.type,
+          phase: w.phase,
+          hookCount: hookCount > 0 ? hookCount : undefined,
+        }
+      },
     )
   })
 

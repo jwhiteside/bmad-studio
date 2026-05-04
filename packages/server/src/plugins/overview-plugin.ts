@@ -73,14 +73,29 @@ export async function overviewPlugin(app: FastifyInstance) {
           count: index.agents.filter((a) => a.name || a.title).length,
         },
         process: {
-          workflows: index.workflows.map((w) => ({
-            id: w.id,
-            name: w.name,
-            stepCount: w.steps.length,
-            module: w.module,
-            type: w.type,
-          })),
+          workflows: index.workflows.map((w) => {
+            const hc = w.hooks
+              ? (w.hooks.activationStepsPrepend?.length ?? 0) +
+                (w.hooks.activationStepsAppend?.length ?? 0) +
+                (w.hooks.onComplete?.length ?? 0)
+              : 0
+            return {
+              id: w.id,
+              name: w.name,
+              stepCount: w.steps.length,
+              module: w.module,
+              type: w.type,
+              hookCount: hc > 0 ? hc : undefined,
+            }
+          }),
           count: index.workflows.length,
+          integrationCount: index.workflows.reduce((sum, w) => {
+            if (!w.hooks) return sum
+            return sum +
+              (w.hooks.activationStepsPrepend?.length ?? 0) +
+              (w.hooks.activationStepsAppend?.length ?? 0) +
+              (w.hooks.onComplete?.length ?? 0)
+          }, 0),
         },
         toolkit: {
           skills: index.skills.map((s) => ({

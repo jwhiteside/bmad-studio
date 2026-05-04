@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Rocket, ArrowRight, CheckCircle2, FileText, AlertTriangle, ChevronDown, RefreshCw, SkipForward } from 'lucide-react'
+import { Rocket, ArrowRight, CheckCircle2, FileText, AlertTriangle, ChevronDown, RefreshCw, SkipForward, Zap } from 'lucide-react'
 
 import { EmptyState } from '../../shared/EmptyState.js'
 import { useProjectMode } from '../../lib/use-project-mode.js'
@@ -453,8 +453,9 @@ type OverviewData = {
       count: number
     }
     process?: {
-      workflows: Array<{ id: string; name: string; stepCount: number; module?: string; type?: string }>
+      workflows: Array<{ id: string; name: string; stepCount: number; module?: string; type?: string; hookCount?: number }>
       count: number
+      integrationCount?: number
     }
     toolkit?: { skills: Array<{ id: string; name: string; module?: string }>; count: number }
     packages?: { packages: Array<{ name: string; version: string }>; count: number }
@@ -510,9 +511,18 @@ export function OverviewPage() {
 
       {/* v6.5 mode badge — only shown when mode is confirmed (not loading) */}
       {!modeLoading && isV65 && (
-        <div className="mb-6 flex items-center gap-2 rounded-md border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 px-3 py-2 w-fit">
-          <span className="text-xs font-bold text-[var(--color-accent)] uppercase tracking-wider">BMAD v6.5</span>
-          <span className="text-xs text-[var(--color-muted)]">— Entity-based configuration active</span>
+        <div className="mb-6 flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 rounded-md border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 px-3 py-2">
+            <span className="text-xs font-bold text-[var(--color-accent)] uppercase tracking-wider">BMAD v6.5</span>
+            <span className="text-xs text-[var(--color-muted)]">— Entity-based configuration active</span>
+          </div>
+          {(data.sections?.process?.integrationCount ?? 0) > 0 && (
+            <div className="flex items-center gap-1.5 rounded-md border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/5 px-3 py-2">
+              <Zap size={12} className="text-[var(--color-accent)]" />
+              <span className="text-xs text-[var(--color-accent)] font-bold">{data.sections.process!.integrationCount}</span>
+              <span className="text-xs text-[var(--color-muted)]">active hook{data.sections.process!.integrationCount !== 1 ? 's' : ''}</span>
+            </div>
+          )}
         </div>
       )}
 

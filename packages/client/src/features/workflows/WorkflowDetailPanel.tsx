@@ -9,6 +9,8 @@ import type { WorkflowStep, WorkflowHooks, HookEntry } from '@bmad-studio/shared
 
 import { useWorkflowDetail } from './use-workflows.js'
 import { WorkflowTypeBadge } from './WorkflowsPage.js'
+import { HOOK_PRESETS, PRESET_CATEGORIES, resolvePreset } from './hook-presets.js'
+import type { HookPreset } from './hook-presets.js'
 import { EditWorkflowDialog } from './EditWorkflowDialog.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
 import { CodeMirrorEditor } from '../../shared/markdown-editor/CodeMirrorEditor.js'
@@ -83,6 +85,141 @@ const HOOK_SUBSECTIONS: Array<{
 
 const SHELL_META_RE = /(?<!['""])([&|;`]|\$\()/
 
+// ---------------------------------------------------------------------------
+// Preset picker
+// ---------------------------------------------------------------------------
+
+function PresetPicker({ hookKey, onAdd, onClose }: {
+  hookKey: keyof WorkflowHooks
+  onAdd: (command: string) => void
+  onClose: () => void
+}) {
+  const [selected, setSelected] = useState<HookPreset | null>(null)
+  const [vars, setVars] = useState<Record<string, string>>({})
+
+  // All presets; sort so "custom" is last
+  const presets = HOOK_PRESETS.slice().sort((a, b) => {
+    if (a.category === 'custom') return 1
+    if (b.category === 'custom') return -1
+    return 0
+  })
+
+  const categories = Array.from(new Set(presets.map((p) => p.category)))
+
+  function selectPreset(preset: HookPreset) {
+    setSelected(preset)
+    const initial: Record<string, string> = {}
+    preset.variables.forEach((v) => { initial[v.key] = '' })
+    setVars(initial)
+  }
+
+  function handleConfirm() {
+    if (!selected) return
+    onAdd(resolvePreset(selected, vars))
+    onClose()
+  }
+
+  const allFilled = selected
+    ? selected.variables.every((v) => vars[v.key]?.trim())
+    : false
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-[var(--color-bg)] rounded-xl border border-[var(--color-border-subtle)] shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--color-border-subtle)]">
+          <div className="flex items-center gap-2">
+            <Zap size={14} className="text-[var(--color-accent)]" />
+            <span className="text-sm font-bold">Add from template</span>
+          </div>
+          <button onClick={onClose} className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex" style={{ minHeight: 300 }}>
+          {/* Preset list */}
+          <div className="w-56 shrink-0 border-r border-[var(--color-border-subtle)] overflow-y-auto" style={{ maxHeight: 420 }}>
+            {categories.map((cat) => (
+              <div key={cat}>
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)] bg-[var(--color-surface-raised)] sticky top-0">
+                  {PRESET_CATEGORIES[cat]}
+                </div>
+                {presets.filter((p) => p.category === cat).map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => selectPreset(preset)}
+                    className={`w-full text-left px-3 py-2.5 transition-colors border-b border-[var(--color-border-subtle)]/50 ${
+                      selected?.id === preset.id
+                        ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
+                        : 'hover:bg-[var(--color-surface-raised)] text-[var(--color-text)]'
+                    }`}
+                  >
+                    <p className="text-xs font-bold">{preset.label}</p>
+                    <p className="text-[10px] text-[var(--color-muted)] mt-0.5 leading-tight">{preset.description}</p>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Variable form */}
+          <div className="flex-1 p-5 overflow-y-auto" style={{ maxHeight: 420 }}>
+            {!selected ? (
+              <p className="text-sm text-[var(--color-muted)] text-center mt-8">Select a template to configure it.</p>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-bold mb-0.5">{selected.label}</p>
+                  <p className="text-[10px] text-[var(--color-muted)]">{selected.description}</p>
+                  <p className="text-[10px] text-[var(--color-muted)] mt-1">
+                    Adds to: <span className="font-bold">{HOOK_SUBSECTIONS.find((s) => s.key === hookKey)?.label ?? hookKey}</span>
+                  </p>
+                </div>
+
+                {selected.variables.map((v) => (
+                  <div key={v.key}>
+                    <label className="text-[11px] font-bold block mb-1">{v.label}</label>
+                    {v.description && (
+                      <p className="text-[10px] text-[var(--color-muted)] mb-1">{v.description}</p>
+                    )}
+                    <input
+                      value={vars[v.key] ?? ''}
+                      onChange={(e) => setVars((prev) => ({ ...prev, [v.key]: e.target.value }))}
+                      placeholder={v.placeholder}
+                      className="w-full text-xs font-[var(--font-mono)] bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] rounded px-2.5 py-1.5 focus:outline-none focus:border-[var(--color-accent)]"
+                    />
+                  </div>
+                ))}
+
+                {selected.variables.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-[var(--color-muted)] mb-1">Preview</p>
+                    <code className="block text-[10px] font-[var(--font-mono)] bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] rounded p-2 text-[var(--color-accent)] break-all whitespace-pre-wrap">
+                      {resolvePreset(selected, vars) || '…'}
+                    </code>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 px-5 py-3.5 border-t border-[var(--color-border-subtle)]">
+          <button onClick={onClose} className="px-3 py-1.5 text-xs rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors">Cancel</button>
+          <button
+            onClick={handleConfirm}
+            disabled={!selected || !allFilled}
+            className="px-3 py-1.5 text-xs font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Add command
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function HooksPanel({ workflowId, initialHooks, isV65 }: {
   workflowId: string
   initialHooks: WorkflowHooks | undefined
@@ -100,6 +237,7 @@ function HooksPanel({ workflowId, initialHooks, isV65 }: {
   const [cmdError, setCmdError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [presetKey, setPresetKey] = useState<keyof WorkflowHooks | null>(null)
   const addInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -185,6 +323,14 @@ function HooksPanel({ workflowId, initialHooks, isV65 }: {
         </div>
       )}
 
+      {presetKey && (
+        <PresetPicker
+          hookKey={presetKey}
+          onAdd={(cmd) => update(presetKey, [...hooks[presetKey], { command: cmd }])}
+          onClose={() => setPresetKey(null)}
+        />
+      )}
+
       <div className="space-y-4">
         {HOOK_SUBSECTIONS.map(({ key, label, when }) => {
           const entries = hooks[key]
@@ -263,13 +409,23 @@ function HooksPanel({ workflowId, initialHooks, isV65 }: {
                     <button onClick={() => { setAddingTo(null); setNewCmd(''); setCmdError(null) }} className="text-xs text-[var(--color-muted)] shrink-0">Cancel</button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setAddingTo(key)}
-                    className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors px-2 py-1"
-                  >
-                    <Plus size={11} />
-                    Add command
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setAddingTo(key)}
+                      className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors px-2 py-1"
+                    >
+                      <Plus size={11} />
+                      Add command
+                    </button>
+                    <span className="text-[var(--color-border-subtle)]">·</span>
+                    <button
+                      onClick={() => setPresetKey(key)}
+                      className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors px-2 py-1"
+                    >
+                      <Zap size={11} />
+                      Use template
+                    </button>
+                  </div>
                 )}
 
                 {cmdError && addingTo === key && (

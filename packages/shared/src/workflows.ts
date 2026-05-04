@@ -89,4 +89,5 @@ export type WorkflowListItem = {
   stepCount: number
   type?: WorkflowType
   phase?: string
+  hookCount?: number
 }
