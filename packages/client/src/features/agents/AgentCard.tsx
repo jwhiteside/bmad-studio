@@ -44,7 +44,6 @@ export function AgentCard({ agent }: AgentCardProps) {
         )}
       </CardBody>
       <CardFooter
-        left={<span>{agent.skillCount} skills</span>}
         right={<ModuleBadge module={agent.module} />}
       />
     </EntityCard>

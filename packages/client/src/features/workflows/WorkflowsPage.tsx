@@ -302,7 +302,6 @@ export function WorkflowsPage() {
                           </span>
                         )}
                         <WorkflowTypeBadge type={wf.type} />
-                        <span>{wf.stepCount} steps</span>
                         {wf.module && (
                           <span className="px-2 py-0.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border-subtle)]">
                             {wf.module}
