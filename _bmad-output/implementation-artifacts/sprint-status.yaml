@@ -393,8 +393,80 @@ development_status:
   epic-40-retrospective: optional
 
   # Epic 41: BMAD Method Mode + Navigation Restructure
-  epic-41: backlog
-  41-1-backend-detect-bmad-mode-from-installed-modules: backlog
-  41-2-home-page-bmad-mode-badge-and-phase-timeline: backlog
-  41-3-navigation-restructure: backlog
+  epic-41: done
+  41-1-backend-detect-bmad-mode-from-installed-modules: done
+  41-2-home-page-bmad-mode-badge-and-phase-timeline: done
+  41-3-navigation-restructure: done
   epic-41-retrospective: optional
+
+  # ─── Cycle 7 (E42–E50) ───────────────────────────────────────────────────────
+  # PRD: _bmad-output/planning-artifacts/prd-cycle7-addendum.md
+  # Architecture: _bmad-output/planning-artifacts/architecture-cycle7-notes.md
+  # Epics: _bmad-output/planning-artifacts/epics-cycle7.md
+
+  # Epic 42: UI Tidy — Navigation and Page Audit
+  epic-42: backlog
+  42-1-remove-dead-nav-items-and-routes: backlog
+  42-2-home-page-remove-toolkit-summary-fix-commands-link: backlog
+  42-3-agents-page-trim-cards-and-detail-panel: backlog
+  42-4-workflows-page-trim-cards: backlog
+  42-5-settings-remove-all-files-audit-connections: backlog
+  epic-42-retrospective: optional
+
+  # Epic 43: Workflow Hooks: Configuration and Integration
+  epic-43: backlog
+  43-1-hooks-panel-discovery-and-read-only-display: backlog
+  43-2-hook-configuration-add-enable-disable-delete-reorder: backlog
+  43-3-integration-presets-common-tool-templates: backlog
+  43-4-hooks-in-workflow-list-and-overview: backlog
+  epic-43-retrospective: optional
+
+  # Epic 44: Workflow Visibility
+  epic-44: backlog
+  44-1-parse-io-block-from-workflow-frontmatter: backlog
+  44-2-workflow-status-endpoint: backlog
+  44-3-workflow-list-phase-grouping-and-status-indicators: backlog
+  44-4-workflow-detail-inputs-outputs-downstream-consumers: backlog
+  44-5-home-dashboard-workflow-readiness-panel: backlog
+  epic-44-retrospective: optional
+
+  # Epic 45: Project Context Editor
+  epic-45: backlog
+  45-1-editor-shell-section-navigator-raw-toggle-route-redirect: backlog
+  45-2-section-parser-server-endpoint: backlog
+  45-3-linter-engine-shared-package: backlog
+  45-4-quality-score-and-live-linting-ui: backlog
+  45-5-inline-guidance-what-is-this-for-and-examples: backlog
+  45-6-empty-state-template-stub-and-save-with-diff: backlog
+  epic-45-retrospective: optional
+
+  # Epic 46: Pattern Library Integration
+  epic-46: backlog
+  46-1-library-config-ui-in-settings: backlog
+  46-2-library-fetch-layer-server: backlog
+  46-3-manifest-parser-server: backlog
+  46-4-template-picker-component-client: backlog
+  46-5-variable-form-and-import-flow: backlog
+  epic-46-retrospective: optional
+
+  # Epic 47: Setup Wizards Phase 1
+  epic-47: backlog
+  47-1-wizard-shell-and-routing: backlog
+  47-2-greenfield-wizard-steps-1-to-5: backlog
+  47-3-greenfield-wizard-steps-6-to-10-and-generation: backlog
+  47-4-brownfield-wizard-manual-mode: backlog
+  epic-47-retrospective: optional
+
+  # Epic 48: UI and Design System Update (scope TBD after E47)
+  epic-48: backlog
+
+  # Epic 49: Authoring Linters
+  epic-49: backlog
+  49-1-agent-persona-linter: backlog
+  49-2-workflow-linter: backlog
+  49-3-module-linter: backlog
+  49-4-lint-score-on-overview-dashboard: backlog
+  epic-49-retrospective: optional
+
+  # Epic 50: Setup Wizards Phase 2 (deferred — no stories yet)
+  epic-50: backlog
