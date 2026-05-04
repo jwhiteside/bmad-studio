@@ -9,8 +9,6 @@ import {
   FileOutput,
   Plug,
   Package,
-  FolderTree,
-  BookOpen,
   Settings,
   Moon,
   Sun,
@@ -18,7 +16,6 @@ import {
   FolderOpen,
   ChevronDown,
   Loader2,
-  Layers,
 } from 'lucide-react'
 
 import type { WebSocketEvent } from '@bmad-studio/shared'
@@ -47,11 +44,9 @@ const outputsGroup: NavGroup = {
 
 const toolkitGroupV6: NavGroup = {
   label: 'Toolkit',
-  icon: Layers,
+  icon: GitBranch,
   items: [
-    { to: '/toolkit', label: 'View All', icon: Layers },
     { to: '/agents', label: 'Agents', icon: Users, badgeKey: 'agents' },
-    { to: '/commands', label: 'Agent Triggers', icon: BookOpen },
     { to: '/teams', label: 'Teams', icon: UsersRound, badgeKey: 'teams' },
     { to: '/skills', label: 'Skills', icon: Zap, badgeKey: 'skills' },
     { to: '/workflows', label: 'Workflows', icon: GitBranch, badgeKey: 'workflows' },
@@ -60,14 +55,12 @@ const toolkitGroupV6: NavGroup = {
 
 const toolkitGroupV65: NavGroup = {
   label: 'Toolkit',
-  icon: Layers,
+  icon: GitBranch,
   items: [
     { to: '/agents', label: 'Agents', icon: Users, badgeKey: 'agents' },
     { to: '/workflows', label: 'Workflows', icon: GitBranch, badgeKey: 'workflows' },
     { to: '/teams', label: 'Teams', icon: UsersRound, badgeKey: 'teams' },
-    { to: '/commands', label: 'Agent Triggers', icon: BookOpen },
     { to: '/skills', label: 'Skills (compiled)', icon: Zap, badgeKey: 'skills' },
-    { to: '/toolkit', label: 'IDE View', icon: Layers },
   ],
 }
 
@@ -78,7 +71,6 @@ const settingsGroup: NavGroup = {
     { to: '/settings', label: 'Preferences', icon: Settings },
     { to: '/modules', label: 'Modules', icon: Package, badgeKey: 'modules' },
     { to: '/connections', label: 'IDE Connections', icon: Plug, badgeKey: 'connections' },
-    { to: '/files', label: 'All Files', icon: FolderTree },
   ],
 }
 

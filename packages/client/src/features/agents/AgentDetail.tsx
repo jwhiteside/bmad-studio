@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, ChevronRight, Pencil, Plus, GitBranch, Users, GitMerge, AlertCircle, Save } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, Pencil, GitBranch, Users, GitMerge, AlertCircle, Save } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
 import type { TeamListItem } from '@bmad-studio/shared'
@@ -7,7 +7,6 @@ import type { TeamListItem } from '@bmad-studio/shared'
 import { useAgentDetail } from './use-agent-detail.js'
 import { useWorkflows } from '../workflows/use-workflows.js'
 import { useTeams } from '../teams/use-teams.js'
-import { SkillAssignmentPanel } from './SkillAssignmentPanel.js'
 import { EditAgentDialog } from './EditAgentDialog.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
 import { CodeMirrorEditor } from '../../shared/markdown-editor/CodeMirrorEditor.js'
@@ -26,7 +25,6 @@ export function AgentDetailPage() {
   const [sourceExpanded, setSourceExpanded] = useState(false)
   const [sourceContent, setSourceContent] = useState<string | null>(null)
   const [sourceLoading, setSourceLoading] = useState(false)
-  const [showSkillAssignment, setShowSkillAssignment] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const { data: workflows } = useWorkflows()
   const { data: allTeams } = useTeams()
@@ -298,66 +296,6 @@ export function AgentDetailPage() {
           )}
         </div>
       </section>
-
-      {/* Skills */}
-      <section className="mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold">Skills ({agent.skills.length})</h2>
-          <button
-            onClick={() => setShowSkillAssignment(true)}
-            className="flex items-center gap-1 text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors"
-          >
-            <Plus size={14} />
-            Assign
-          </button>
-        </div>
-        {agent.skills.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {agent.skills.map((skill) => (
-              <button
-                key={skill}
-                onClick={() => navigate('/skills')}
-                className="px-3 py-1 text-xs rounded-full bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors cursor-pointer"
-              >
-                {skill}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-[var(--color-muted)]">No skills assigned</p>
-        )}
-      </section>
-
-      {/* Skill Assignment Panel with Drag-and-Drop */}
-      {showSkillAssignment && (
-        <div className="fixed inset-0 z-40 flex">
-          <div className="flex-1 bg-black/40" onClick={() => setShowSkillAssignment(false)} />
-          <div className="w-[700px] bg-[var(--color-bg)] border-l border-[var(--color-border-subtle)] shadow-xl">
-            <SkillAssignmentPanel
-              agentName={agent.name}
-              currentSkills={agent.skills}
-              onSave={async (skills) => {
-                try {
-                  const resp = await fetch(`/api/agents/${id}/skills`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ skills }),
-                  })
-                  if (resp.ok) {
-                    notify('success', `Updated skills for ${agent.name}`)
-                    setShowSkillAssignment(false)
-                  } else {
-                    notify('error', 'Failed to update skills')
-                  }
-                } catch {
-                  notify('error', 'Failed to update skills')
-                }
-              }}
-              onClose={() => setShowSkillAssignment(false)}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Menu Items / Commands */}
       {agent.menu.length > 0 && (

@@ -427,14 +427,6 @@ function PhaseTimeline({ commands }: { commands: CommandItem[] }) {
 type OverviewData = {
   detected: boolean
   projectHealth?: { hasProjectContext: boolean; projectDescription?: string }
-  toolkitStats?: {
-    totalSkills: number
-    assignedSkills: number
-    unassignedSkills: number
-    totalAgents: number
-    totalWorkflows: number
-    totalTeams: number
-  }
   sections: {
     teams?: {
       teams: Array<{
@@ -553,35 +545,6 @@ export function OverviewPage() {
       <div className="space-y-0">
         {/* Project Status — shown when health data exists */}
         {health && <ProjectStatusPanel health={health} />}
-
-        {/* Story 26.3: Toolkit Summary */}
-        {data.toolkitStats && (
-          <section className="mb-10 border-b border-[var(--color-border-subtle)] pb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)]">Toolkit</h2>
-              <Link
-                to="/toolkit"
-                className="text-sm font-bold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors"
-              >
-                View Toolkit &rarr;
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { to: '/agents', count: data.toolkitStats.totalAgents, label: 'Agents', icon: '👤' },
-                { to: '/skills', count: data.toolkitStats.totalSkills, label: 'Skills', icon: '⚡' },
-                { to: '/workflows', count: data.toolkitStats.totalWorkflows, label: 'Workflows', icon: '🔀' },
-                { to: '/teams', count: data.toolkitStats.totalTeams, label: 'Teams', icon: '👥' },
-              ].map((item) => (
-                <Link key={item.to} to={item.to} className="flex flex-col items-center gap-2 p-4 rounded-lg bg-[var(--color-surface-raised)] hover:border-[var(--color-accent)] border border-[var(--color-border-subtle)] transition-colors">
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="text-2xl font-extrabold text-[var(--color-text)]">{item.count}</span>
-                  <span className="text-xs text-[var(--color-muted)]">{item.label}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* Phase Timeline */}
         {commands.length > 0 && <PhaseTimeline commands={commands} />}
