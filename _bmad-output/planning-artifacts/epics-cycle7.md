@@ -1,4 +1,4 @@
-# Epics — Cycle 7 (E42–E48)
+# Epics — Cycle 7 (E42–E49)
 
 **Date:** 2026-05-04
 **Status:** Draft — awaiting approval
@@ -22,7 +22,7 @@ Remove from navigation and routing:
 - `/toolkit` (Toolkit / View All / IDE View) — all modes
 - `/files` (All Files) — Settings group
 - `/commands` removed from nav; page kept and reachable via Home's "View all triggers →" link
-- `/workspace` nav link removed; page kept until 44.1 replaces it
+- `/workspace` nav link removed; page kept until 45.1 replaces it
 
 Update `Sidebar.tsx` (both `toolkitGroupV6` and `toolkitGroupV65`) and `app.tsx` router. Confirm no nav link goes to a 404.
 
@@ -64,18 +64,17 @@ AC:
 
 ---
 
-**42.4 — Workflows page: trim cards, add Hooks section to detail**
+**42.4 — Workflows page: trim cards**
 Card elements to remove:
 - Step count badge
 
 Keep on card: name, type badge (Step/Agent/Composite/Utility), phase label, one-line description, module badge.
 
-Detail panel: add a compact **Hooks** section below Sub-Agents. Reads from `workflow.hooks` (already populated by `workflow-adapter.ts`). Shows each hook type (`before_story`, `after_story`, etc.) with its configured value. If no hooks, section is hidden.
+Note: the Hooks section for workflow detail is part of E43, not this story. This story only handles the card trim.
 
 AC:
 - Workflow card has no step count badge
-- Workflow detail panel shows Hooks section when hooks present, hidden when none
-- Hooks data sourced from existing `workflow.hooks` field (no new API endpoints)
+- Workflow card shows: name, type badge, phase, one-line description, module badge
 
 ---
 
@@ -92,7 +91,127 @@ AC:
 
 ---
 
-## E43 — Workflow Visibility
+## E43 — Workflow Hooks: Configuration and Integration
+
+**Goal:** Make hooks a first-class, intuitive feature engineers can configure without touching TOML. Hooks are how Studio connects workflows to the existing tools and processes engineers already use — they should be discoverable, understandable, and configurable entirely from the UI.
+
+**Background:** Hooks are fully parsed from `customize.toml` (server-side via `workflow-adapter.ts`) but have zero UI presence. Three hook lifecycle events exist: commands prepended before workflow activation (`activationStepsPrepend`), appended after activation (`activationStepsAppend`), and run on workflow completion (`onComplete`). Each is an array of shell commands that Studio can enable or disable individually via sidecar comment state.
+
+**Estimate:** 8–10 days
+
+### Stories
+
+**43.1 — Hooks panel: discovery and read-only display**
+Add a dedicated **Hooks** section to `WorkflowDetailPanel.tsx`. This is not a compact list — it is a full panel section with context.
+
+Layout:
+- Section heading: "Workflow Hooks" with a one-sentence description: "Shell commands Studio runs automatically at key moments in this workflow's lifecycle."
+- Three subsections, each with a label explaining *when it runs*, not just its TOML name:
+
+  | Subsection label | When it runs |
+  |---|---|
+  | Before activation | Before the workflow instructions are loaded into the agent |
+  | After activation | After the workflow loads, before the first user interaction |
+  | On complete | When the workflow signals completion |
+
+- Each hook command shown as a card: `$ command` (monospaced), enabled/disabled state chip.
+- Empty state per subsection: "No commands configured" — not hidden, always visible with an "Add" CTA.
+- Add new server endpoint `GET /api/workflows/:id/hooks` returning `WorkflowHooks` with metadata (covered by existing `workflow.hooks` field; endpoint thin wrapper for direct fetch).
+
+AC:
+- Hooks section always visible in workflow detail (never hidden)
+- Three subsections with correct human-readable lifecycle labels
+- Each hook command shown with monospace command + enabled/disabled chip
+- Empty subsections show "No commands configured" + Add CTA
+- Hooks data sourced from `workflow.hooks` (existing data path; no new parsing)
+
+---
+
+**43.2 — Hook configuration: add, enable/disable, delete, reorder**
+Make the Hooks panel fully editable.
+
+New server endpoint: `PUT /api/workflows/:id/hooks`
+- Accepts updated `WorkflowHooks` object
+- Writes hook commands to `[workflow]` block in `customize.toml` (creates file if absent)
+- Writes disabled state to sidecar `# bmad-studio:hook-state` block
+- Uses `atomicWrite` (existing primitive) — no partial writes
+
+Client interactions per hook subsection:
+- **Add command**: inline text input (appears when "Add" CTA clicked); Enter or "Add" button confirms; Escape cancels. Appends to the hook array.
+- **Enable/disable toggle**: clicking the chip flips `disabled` state; writes immediately via PUT endpoint. No confirmation needed (easily reversible).
+- **Delete**: trash icon button per command; confirmation tooltip ("Remove this hook command?") before write.
+- **Reorder**: up/down arrow buttons per command (drag-and-drop not required for MVP). Order matters — commands run sequentially.
+
+Validation:
+- Empty command string blocked (inline error: "Command cannot be empty").
+- Command must not contain shell injection characters (`&`, `|`, `;`, `` ` ``, `$()`) at the top level — warn with amber badge but allow save (engineer may know what they're doing; we warn, not block).
+
+AC:
+- Add command writes to customize.toml correctly
+- Enable/disable toggle persists in sidecar state block
+- Delete removes command from TOML
+- Reorder updates array order in TOML
+- Empty command blocked; shell metacharacter warning shown but not blocking
+- atomicWrite used for all writes
+
+---
+
+**43.3 — Integration presets: common tool templates**
+Add an "Add from template" action in each hook subsection (alongside the manual "Add" CTA).
+
+Opens a preset picker modal with pre-built integration patterns. These cover the most common "connect to existing tools" use cases:
+
+| Preset | Hook type | Command template |
+|---|---|---|
+| Log run to file | onComplete | `echo "[{workflow_name}] {datetime}" >> ~/.bmad/run-log.txt` |
+| Slack notification | onComplete | `curl -s -X POST "{SLACK_WEBHOOK_URL}" -H 'Content-type: application/json' -d '{"text":"{workflow_name} completed"}'` |
+| Open URL in browser | onComplete | `open "{URL}"` |
+| GitHub: create issue | beforeActivation | `gh issue create --title "{workflow_name} started" --body "" --label "bmad"` |
+| Post to webhook | onComplete | `curl -s -X POST "{WEBHOOK_URL}" -d 'workflow={workflow_name}'` |
+| Run custom script | any | `bash {SCRIPT_PATH}` |
+
+Preset picker modal:
+- Grid of preset cards with icon, name, description, and which hook type it applies to
+- Filtering by hook type (shows only presets compatible with the target subsection)
+- On select: variable form (one field per `{VARIABLE}` in the command template, with label and placeholder)
+- Required variables (no default) block import; optional (have defaults) pre-filled
+- Preview: shows resolved command with substituted variables
+- "Add to hooks" button appends resolved command to the target hook type
+
+Variable tokens available in all templates: `{workflow_name}`, `{workflow_id}`, `{project_name}`, `{datetime}`, `{date}`.
+
+Presets are defined as a static array in a client-side constant file (no server involvement). New presets added by editing the constant.
+
+AC:
+- "Add from template" opens preset picker in each hook subsection
+- All presets render correctly with variable forms
+- Variable substitution produces correct command preview
+- Required variable validation blocks add
+- Resolved command added to correct hook type on confirm
+- Preset picker filterable by hook type
+
+---
+
+**43.4 — Hooks in workflow list and overview**
+Surface hook presence in the Workflows list and Home overview so engineers can discover which workflows have integrations configured.
+
+Workflows list (WorkflowsPage):
+- Workflow card: small hooks indicator icon + count when hooks are configured (e.g. "⚡ 3 hooks"). Hidden when no hooks.
+- Filter chip: "Has hooks" — shows only workflows with at least one enabled hook command.
+
+Home overview (OverviewPage, if v6.5 project):
+- Add a compact "Active integrations" row to the Project Status section: count of workflows with enabled hook commands, linked to Workflows page with "Has hooks" filter pre-applied.
+- If count is 0: row hidden (not cluttering Home for projects that haven't set up hooks).
+
+AC:
+- Workflows card shows hooks count when hooks present, hidden when none
+- "Has hooks" filter chip works on Workflows page
+- Home "Active integrations" row appears when at least one workflow has enabled hooks
+- All links navigate correctly
+
+---
+
+## E44 — Workflow Visibility
 
 **Goal:** Engineer opens Workflows page and knows immediately which workflows are ready, which are blocked and why, and what to do about it. Live updates as files change.
 
@@ -100,7 +219,7 @@ AC:
 
 ### Stories
 
-**43.1 — Parse `io` block from workflow.md frontmatter (server)**
+**44.1 — Parse `io` block from workflow.md frontmatter (server)**
 Extend `workflow-parser.ts` to read the proposed `io` frontmatter block:
 
 ```yaml
@@ -136,7 +255,7 @@ AC:
 
 ---
 
-**43.2 — Workflow status endpoint (server)**
+**44.2 — Workflow status endpoint (server)**
 New endpoint: `GET /api/workflows/:id/status`
 
 Response:
@@ -166,7 +285,7 @@ Status derivation:
 - `already-run`: at least one output file exists matching the declared pattern
 - `unknown`: no `io` block and fallback parse failed
 
-Quality checks (from brief F4): file exists, non-empty (>50 bytes), contains expected headings for known file types.
+Quality checks: file exists, non-empty (>50 bytes), contains expected headings for known file types.
 
 AC:
 - Endpoint returns correct status for a workflow with all inputs present
@@ -176,7 +295,7 @@ AC:
 
 ---
 
-**43.3 — Workflow list view: phase grouping, status indicators, filter chips**
+**44.3 — Workflow list view: phase grouping, status indicators, filter chips**
 Update `WorkflowsPage.tsx`:
 - Fetch status for all workflows (batch request or parallel per-workflow)
 - Group cards by BMAD phase (1-Analysis, 2-Planning, 3-Solutioning, 4-Implementation, Anytime/Utility)
@@ -193,12 +312,12 @@ AC:
 
 ---
 
-**43.4 — Workflow detail panel: Inputs/Outputs tables, Downstream consumers**
+**44.4 — Workflow detail panel: Inputs/Outputs tables, Downstream consumers**
 Update `WorkflowDetailPanel.tsx`:
 - Replace or augment existing steps list with **Inputs** table: id, description, status chip, expected path, quality notes
 - Add **Outputs** table: id, description, files produced (with timestamps)
-- Add **Downstream consumers** section: list of workflows that declare this workflow's outputs as their inputs (requires a server index — add to `GET /api/workflows/:id/status` response or a separate endpoint)
-- Hooks section (from E42.4) already done
+- Add **Downstream consumers** section: list of workflows that declare this workflow's outputs as their inputs
+- Hooks section (from E43) already done
 
 AC:
 - Inputs table present with correct status chips
@@ -207,7 +326,7 @@ AC:
 
 ---
 
-**43.5 — Home dashboard: workflow readiness panel**
+**44.5 — Home dashboard: workflow readiness panel**
 Update `OverviewPage.tsx`:
 - Add a "Workflow Readiness" panel to Project Status section
 - Shows: count of Ready / Blocked / Already Run workflows as clickable chips → each opens Workflows page filtered to that status
@@ -221,7 +340,7 @@ AC:
 
 ---
 
-## E44 — Project Context Editor
+## E45 — Project Context Editor
 
 **Goal:** Replace the generic Workspace editor with a structured, guided, linting editor for `project-context.md`. Quality score visible at a glance.
 
@@ -229,7 +348,7 @@ AC:
 
 ### Stories
 
-**44.1 — Editor shell: section navigator, raw toggle, route redirect**
+**45.1 — Editor shell: section navigator, raw toggle, route redirect**
 - Create new page `ProjectContextEditorPage.tsx` at `/project-context`
 - Two-column layout: left section navigator (list of canonical sections with status dots), right editor pane
 - Raw markdown toggle (CodeMirror, existing component) in the editor pane header
@@ -246,7 +365,7 @@ AC:
 
 ---
 
-**44.2 — Section parser (server)**
+**45.2 — Section parser (server)**
 New endpoint: `GET /api/project-context`
 
 Server reads `{planning_artifacts}/project-context.md`, splits into canonical sections:
@@ -276,7 +395,7 @@ AC:
 
 ---
 
-**44.3 — Linter engine (shared package)**
+**45.3 — Linter engine (shared package)**
 Create `packages/shared/src/linter/`:
 - `engine.ts` — `runLinter(doc: ProjectContextDocument, rules: LintRule[]): LintFinding[]`
 - `types.ts` — `LintRule`, `LintFinding`, `Severity` ('error' | 'warning' | 'info')
@@ -304,7 +423,7 @@ AC:
 
 ---
 
-**44.4 — Quality score and live linting UI**
+**45.4 — Quality score and live linting UI**
 - Quality score: `score = max(0, 100 - (errors × 10) - (warnings × 3) - (info × 1))`
 - Display score prominently in editor header: number + label (Weak / Acceptable / Good / Strong)
 - Score updates on every keystroke (debounced 300ms)
@@ -319,7 +438,7 @@ AC:
 
 ---
 
-**44.5 — Inline guidance: "What is this for?" and section examples**
+**45.5 — Inline guidance: "What is this for?" and section examples**
 - Each canonical section heading has a `?` icon → opens a slide-over with:
   - "What is this for?" — one paragraph explanation
   - "See an example" — a strong example from the content file
@@ -334,8 +453,8 @@ AC:
 
 ---
 
-**44.6 — Empty state, template stub, and save with diff**
-- Empty state (no `project-context.md`): three actions — "Start from template" (stubbed: opens a picker with hardcoded placeholder until E45), "Start from blank" (opens editor with empty canonical sections), "Import existing" (file picker to migrate an existing md file)
+**45.6 — Empty state, template stub, and save with diff**
+- Empty state (no `project-context.md`): three actions — "Start from template" (stubbed: opens a picker with hardcoded placeholder until E46), "Start from blank" (opens editor with empty canonical sections), "Import existing" (file picker to migrate an existing md file)
 - Save: `PUT /api/project-context` on server writes the file
 - Diff preview before save: show diff modal (reuse existing DiffConfirmDialog component), user confirms or cancels
 
@@ -347,7 +466,7 @@ AC:
 
 ---
 
-## E45 — Pattern Library Integration
+## E46 — Pattern Library Integration
 
 **Goal:** Studio reads external pattern libraries by URL, discovers templates, surfaces them in editors.
 
@@ -355,7 +474,7 @@ AC:
 
 ### Stories
 
-**45.1 — Library config UI in Settings**
+**46.1 — Library config UI in Settings**
 New section in Settings page: "Pattern Libraries"
 - List of configured libraries with: name, URL, status chip (healthy/cached/broken), last fetch time, template count, Enable toggle, Remove button
 - "Add library" button → modal: Name, URL (git or local path), Branch (default: main), Test connection button
@@ -370,7 +489,7 @@ AC:
 
 ---
 
-**45.2 — Library fetch layer (server)**
+**46.2 — Library fetch layer (server)**
 New `libraryPlugin` in `packages/server/src/plugins/library-plugin.ts`:
 - `POST /api/library` — add library config
 - `DELETE /api/library/:name` — remove
@@ -392,7 +511,7 @@ AC:
 
 ---
 
-**45.3 — Manifest parser (server)**
+**46.3 — Manifest parser (server)**
 `GET /api/library/templates?type=project-context` (and other types)
 
 Reads `manifest.yaml` from each enabled, healthy/cached library. Discovers templates per type. Returns merged list with library source as disambiguator.
@@ -420,14 +539,14 @@ AC:
 
 ---
 
-**45.4 — Template picker component (client)**
+**46.4 — Template picker component (client)**
 Reusable `<TemplatePicker type="project-context" onSelect={...} />` component.
 - Search box + tag filter chips
 - Cards: name, library source, intended use
 - Right pane: preview of template content on hover/select
 - "Import" primary action, "Cancel" secondary
 
-Used in: Project Context Editor (E44 story 44.6 empty state + "Import from library" button), Setup Wizards (E46).
+Used in: Project Context Editor (E45 story 45.6 empty state + "Import from library" button), Setup Wizards (E47).
 
 AC:
 - Picker renders templates from all enabled libraries for the given type
@@ -437,7 +556,7 @@ AC:
 
 ---
 
-**45.5 — Variable form and import flow**
+**46.5 — Variable form and import flow**
 On selecting a template:
 - Fetch full template content: `GET /api/library/templates/:id`
 - If template has variables: render variable form (field per variable, required indicator, default pre-filled)
@@ -453,7 +572,7 @@ AC:
 
 ---
 
-## E46 — Setup Wizards Phase 1
+## E47 — Setup Wizards Phase 1
 
 **Goal:** Guided wizard takes a new or brownfield project from zero to working `project-context.md`.
 
@@ -461,7 +580,7 @@ AC:
 
 ### Stories
 
-**46.1 — Wizard shell and routing**
+**47.1 — Wizard shell and routing**
 New route `/setup-wizard` with step navigation component:
 - Progress bar / step indicator
 - Back / Next / Finish actions
@@ -475,21 +594,21 @@ AC:
 
 ---
 
-**46.2 — Greenfield wizard: steps 1–5**
+**47.2 — Greenfield wizard: steps 1–5**
 Step 1: Project name, client name, one-sentence purpose
 Step 2: Tech stack table (layer, technology, version — add rows dynamically)
 Step 3: Team context (size, working patterns, preferences)
-Step 4: Template selection (pattern library picker from E45, type = `project-context`)
+Step 4: Template selection (pattern library picker from E46, type = `project-context`)
 Step 5: Conventions scaffold (naming, code style, test approach — guided prompts)
 
 AC:
 - All 5 steps render with correct fields per copy file
-- Template picker integrated (falls back to blank if E45 not merged)
+- Template picker integrated (falls back to blank if E46 not merged)
 - Validation prevents advancing with empty required fields
 
 ---
 
-**46.3 — Greenfield wizard: steps 6–10 and generation**
+**47.3 — Greenfield wizard: steps 6–10 and generation**
 Step 6: Anti-patterns (guided list — "things AI agents should never suggest")
 Step 7: Known issues / tech debt (optional)
 Step 8: ADR stub (optional first ADR to document a key existing decision)
@@ -503,7 +622,7 @@ AC:
 
 ---
 
-**46.4 — Brownfield wizard: manual mode**
+**47.4 — Brownfield wizard: manual mode**
 10-step structured flow for existing projects. Same shell as Greenfield, different steps:
 - Steps 1–3: existing tech stack (user fills in manually)
 - Steps 4–6: conventions and patterns (guided questions, user describes existing patterns)
@@ -520,7 +639,7 @@ AC:
 
 ---
 
-## E47 — Authoring Linters
+## E48 — Authoring Linters
 
 **Goal:** Extend linting to agent personas, workflows, and modules. Show findings in existing detail panels.
 
@@ -528,8 +647,8 @@ AC:
 
 ### Stories
 
-**47.1 — Agent persona linter**
-Implement AG- rules from `[Reference] Studio Content - Linter Rules` using the engine from E44.
+**48.1 — Agent persona linter**
+Implement AG- rules from `[Reference] Studio Content - Linter Rules` using the engine from E45.
 
 Add lint findings to `AgentDetail.tsx`: new "Quality" tab or inline sidebar panel with findings list. Show aggregate severity badge on the Agents list card (red dot if errors, amber if warnings).
 
@@ -540,7 +659,7 @@ AC:
 
 ---
 
-**47.2 — Workflow linter**
+**48.2 — Workflow linter**
 Implement WF- rules. Show findings in `WorkflowDetailPanel.tsx` (new "Quality" section).
 
 AC:
@@ -549,7 +668,7 @@ AC:
 
 ---
 
-**47.3 — Module linter**
+**48.3 — Module linter**
 Implement MD- rules. Surface findings in Modules settings page for each installed module.
 
 AC:
@@ -558,7 +677,7 @@ AC:
 
 ---
 
-**47.4 — Lint score on Overview dashboard**
+**48.4 — Lint score on Overview dashboard**
 Add a small "Authoring quality" panel to Home showing: count of errors and warnings across all agents/workflows, with link to the worst offender.
 
 AC:
@@ -568,7 +687,7 @@ AC:
 
 ---
 
-## E48 — Setup Wizards Phase 2 (Deferred)
+## E49 — Setup Wizards Phase 2 (Deferred)
 
 Brownfield automatic inference. No stories. Revisit after real usage data exists.
 

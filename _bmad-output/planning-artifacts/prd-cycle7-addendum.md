@@ -32,12 +32,13 @@ Everything in Cycle 7 serves at least one of these.
 | Epic | Title | Priority | Status |
 |------|-------|----------|--------|
 | E42 | UI Tidy — Navigation and Page Audit | P0 | MVP, ships first |
-| E43 | Workflow Visibility | P0 | MVP, ships second |
-| E44 | Project Context Editor | P0 | MVP, ships third |
-| E45 | Pattern Library Integration | P0 | MVP, ships fourth |
-| E46 | Setup Wizards Phase 1 | P1 | Post-MVP |
-| E47 | Authoring Linters | P2 | Post-MVP |
-| E48 | Setup Wizards Phase 2 | — | Deferred, no timeline |
+| E43 | Workflow Hooks: Configuration and Integration | P0 | MVP, ships second |
+| E44 | Workflow Visibility | P0 | MVP, ships third |
+| E45 | Project Context Editor | P0 | MVP, ships fourth |
+| E46 | Pattern Library Integration | P0 | MVP, ships fifth |
+| E47 | Setup Wizards Phase 1 | P1 | Post-MVP |
+| E48 | Authoring Linters | P2 | Post-MVP |
+| E49 | Setup Wizards Phase 2 | — | Deferred, no timeline |
 
 ---
 
@@ -88,7 +89,38 @@ Remove dead weight from navigation and trim every card and detail panel to the e
 
 ---
 
-## E43 — Workflow Visibility
+## E43 — Workflow Hooks: Configuration and Integration
+
+### Problem
+
+Workflow hooks are BMAD's integration layer — shell commands that run at key lifecycle moments (before activation, after activation, on completion). They let engineers connect workflows to the tools they already use: Slack notifications when a workflow completes, JIRA issues opened before sprint planning, file-based run logs, webhook calls to CI/CD pipelines.
+
+The hooks system is fully implemented server-side (parsed from `customize.toml` per workflow via `workflow-adapter.ts`) but has zero UI presence. Engineers who know about hooks must hand-edit TOML files. Engineers who don't know about hooks miss the feature entirely.
+
+### Goal
+
+Hooks become a first-class, discoverable UI feature. Engineers can see, add, edit, enable/disable, and delete hook commands for any workflow without touching TOML. Common integration patterns (Slack, webhooks, file logging, GitHub) are available as one-click templates.
+
+### Scope
+
+Four stories covering the full hooks lifecycle:
+
+**Discovery and read (43.1):** A dedicated Hooks section in WorkflowDetailPanel — always visible (never hidden), with human-readable lifecycle labels ("Before activation", "After activation", "On complete"), monospace command display, and enabled/disabled state chips. Empty subsections show "No commands configured" + Add CTA.
+
+**Configuration (43.2):** Full read/write hook management. Add commands via inline form, toggle enabled/disabled state, delete commands, reorder via up/down arrows. Server endpoint `PUT /api/workflows/:id/hooks` writes changes back to `customize.toml` using the existing `atomicWrite` primitive and the existing sidecar state format.
+
+**Integration presets (43.3):** "Add from template" action opens a preset picker with common integration patterns — Slack notification, log to file, open URL, GitHub create issue, post to webhook, run custom script. Variable form substitutes `{workflow_name}`, `{datetime}`, `{project_name}` etc. before adding the resolved command.
+
+**List and overview (43.4):** Hooks indicator on workflow cards (icon + count when hooks configured). "Has hooks" filter chip on Workflows page. "Active integrations" count on Home overview (hidden when zero).
+
+### Out of scope
+- Executing hooks from Studio (hooks run in the LLM client, not Studio)
+- Real-time hook output streaming
+- Hook discovery from arbitrary shell PATH (preset commands must be installed by the engineer)
+
+---
+
+## E44 — Workflow Visibility
 
 ### Problem
 
@@ -100,7 +132,7 @@ At any moment, an engineer opens Studio's Workflows page and immediately knows: 
 
 ### Scope
 
-This epic implements the feature brief `[Reference] Studio Brief - Workflow Visibility - 20260501.md` in full, with one addition: a Hooks section in the workflow detail panel (surfacing the already-parsed `WorkflowHooks` data from the v6.5 entity model).
+This epic implements the feature brief `[Reference] Studio Brief - Workflow Visibility - 20260501.md` in full.
 
 Key requirements from the brief:
 - Workflow status: Ready / Blocked / Already Run / Unknown
@@ -118,7 +150,7 @@ See source brief for full functional requirements (F1–F6) and UX notes.
 
 ---
 
-## E44 — Project Context Editor
+## E45 — Project Context Editor
 
 ### Problem
 
@@ -136,17 +168,17 @@ Key requirements:
 - Section-aware editor: renders canonical sections (Purpose, Tech Stack, Conventions, Anti-patterns, etc.) as discrete editable units
 - Linter: deterministic rule-based checks (no LLM), findings inline and in sidebar
 - Quality score: 0–100, live-updating, visible on Overview dashboard
-- Template import: pulls from pattern library (stubbed if E45 not yet merged)
+- Template import: pulls from pattern library (stubbed if E46 not yet merged)
 - Raw markdown toggle: CodeMirror fallback
 - Diff preview on save (non-destructive principle)
 
-The linter engine is the architectural centrepiece of this epic. It is built in `@bmad-studio/shared` as a pure function (no I/O) so it can be reused by E47 without duplication.
+The linter engine is the architectural centrepiece of this epic. It is built in `@bmad-studio/shared` as a pure function (no I/O) so it can be reused by E48 without duplication.
 
-Story 44.1 removes the `/workspace` route and redirects to the new editor.
+Story 45.1 removes the `/workspace` route and redirects to the new editor.
 
 ---
 
-## E45 — Pattern Library Integration
+## E46 — Pattern Library Integration
 
 ### Problem
 
@@ -172,7 +204,7 @@ No credentials stored. Uses system git config / SSH keys.
 
 ---
 
-## E46 — Setup Wizards Phase 1
+## E47 — Setup Wizards Phase 1
 
 ### Problem
 
@@ -188,39 +220,39 @@ Phase 1 only:
 - **Greenfield wizard**: 10-step guided flow producing `project-context.md` from scratch. Uses pattern library templates as starting points.
 - **Brownfield wizard (manual)**: Structured prompts for the engineer to fill in tech stack, conventions, and candidate ADRs themselves. No automatic inference.
 
-Phase 2 (automatic brownfield inference) is deferred to E48.
+Phase 2 (automatic brownfield inference) is deferred to E49.
 
 Source: `[Reference] Studio Brief - Setup Wizards - 20260501.md`. Copy from `[Reference] Studio Content - Wizard Copy - 20260501.md`.
 
 ### Dependency
-Requires E45 (Pattern Library) to be merged first. Can be stubbed against a hardcoded template set if E45 slips.
+Requires E46 (Pattern Library) to be merged first. Can be stubbed against a hardcoded template set if E46 slips.
 
 ---
 
-## E47 — Authoring Linters
+## E48 — Authoring Linters
 
 ### Problem
 
-Quality checks exist only for `project-context.md` (E44). Agent personas, workflow definitions, and module configs have no inline validation. Module authors get no feedback when writing BMAD content.
+Quality checks exist only for `project-context.md` (E45). Agent personas, workflow definitions, and module configs have no inline validation. Module authors get no feedback when writing BMAD content.
 
 ### Goal
 
-Extend the linter primitive (from E44) to cover agent persona files, workflow definitions, and module configs. Show findings inline in the relevant detail panels.
+Extend the linter primitive (from E45) to cover agent persona files, workflow definitions, and module configs. Show findings inline in the relevant detail panels.
 
 ### Scope
 
-Reuses the linter engine built in E44 (`@bmad-studio/shared`). Adds:
+Reuses the linter engine built in E45 (`@bmad-studio/shared`). Adds:
 - Agent persona linter (AG- rules from `[Reference] Studio Content - Linter Rules`)
 - Workflow linter (WF- rules)
 - Module linter (MD- rules)
 - Lint findings surface in Agent detail panel and Workflow detail panel
 
 ### Dependency
-Requires E44 linter engine.
+Requires E45 linter engine.
 
 ---
 
-## E48 — Setup Wizards Phase 2 (Deferred)
+## E49 — Setup Wizards Phase 2 (Deferred)
 
 Automatic brownfield inference: manifest scanning, convention detection, ADR candidate identification. No stories defined. Revisit when real usage data exists to tune heuristics.
 

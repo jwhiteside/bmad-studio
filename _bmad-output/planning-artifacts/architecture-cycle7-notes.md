@@ -43,9 +43,43 @@ Cycle 7 is predominantly client-side. The monorepo architecture (client / server
 
 ---
 
-## ADR-7.3 — Workflow io block: server parses, shared types, client consumes
+## ADR-7.3 — Hooks write path: thin PUT endpoint, no new TOML library
 
-**Context:** Workflow Visibility (E43) requires knowing each workflow's declared inputs and outputs. This needs a machine-readable `io` block in `workflow.md` frontmatter (plus a markdown-table fallback).
+**Context:** E43 adds hook configuration from the UI. Writing hooks back to `customize.toml` without corrupting the existing TOML structure (especially the sidecar comment blocks) requires care.
+
+**Decision:**
+- New endpoint `PUT /api/workflows/:id/hooks` accepts a full `WorkflowHooks` object.
+- Server reads the existing `customize.toml`, updates only the `[workflow]` fields (`activation_steps_prepend`, `activation_steps_append`, `on_complete`) and rewrites the sidecar `# bmad-studio:hook-state` block.
+- All other TOML keys and comments are preserved (read the file, splice the changed block, rewrite).
+- Uses existing `atomicWrite` primitive — no partial writes to disk.
+- `smol-toml` (already a server dependency) handles parse; string reconstruction handles the sidecar comment block (comments are not round-tripped by TOML parsers — sidecar block is managed separately as raw text).
+- If no `customize.toml` exists for a workflow: endpoint creates one with only the `[workflow]` block.
+
+**Consequences:**
+- No new TOML library added.
+- Sidecar state remains in the comment block format established by the v6.5 ADR (ADR-9 in `architecture-v65-migration.md`).
+- Client never writes TOML directly — all writes go through the server endpoint.
+
+---
+
+## ADR-7.4 — Integration presets are client-side constants, not server config
+
+**Context:** E43 story 43.3 adds hook integration presets (Slack, GitHub, webhooks, etc.). These could be stored in a config file, fetched from a server, or hardcoded.
+
+**Decision:** Presets are a static array of objects in a client-side constants file (`packages/client/src/features/workflows/hook-presets.ts`). No server involvement. Adding a new preset is a code change, not a config change.
+
+**Rationale:** Presets are UI patterns, not data. The server has no stake in what preset templates look like. Keeping them client-side means zero API surface, zero security review for new presets, and easy forking/extension.
+
+**Consequences:**
+- Adding a preset requires a code change and PR (acceptable — these are curated, not user-definable).
+- Variable substitution (`{workflow_name}` etc.) is done client-side before calling the PUT endpoint.
+- Server receives a fully resolved command string, not a template.
+
+---
+
+## ADR-7.6 — Workflow io block: server parses, shared types, client consumes
+
+**Context:** Workflow Visibility (E44) requires knowing each workflow's declared inputs and outputs. This needs a machine-readable `io` block in `workflow.md` frontmatter (plus a markdown-table fallback).
 
 **Decision:**
 - The `io` block is parsed by the server's existing `workflow-parser.ts` (extended).
