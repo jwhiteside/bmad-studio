@@ -1,11 +1,11 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { X, GitBranch, Users, FileOutput, FileInput, FileText, FolderOpen, Layers, ChevronDown, ChevronRight, Pencil, ArrowRight, BookMarked, Save } from 'lucide-react'
+import { X, GitBranch, Users, FileOutput, FileInput, FileText, FolderOpen, Layers, ChevronDown, ChevronRight, Pencil, ArrowRight, BookMarked, Save, Zap, Plus, Trash2, ChevronUp, AlertTriangle, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
 
 import { WORKFLOW_TYPE_DEFINITIONS } from '@bmad-studio/shared'
-import type { WorkflowStep } from '@bmad-studio/shared'
+import type { WorkflowStep, WorkflowHooks, HookEntry } from '@bmad-studio/shared'
 
 import { useWorkflowDetail } from './use-workflows.js'
 import { WorkflowTypeBadge } from './WorkflowsPage.js'
@@ -65,6 +65,223 @@ function groupStepsByVariant(steps: WorkflowStep[]): StepGroup[] {
     if (b.key === '__primary') return 1
     return a.key.localeCompare(b.key)
   })
+}
+
+// ---------------------------------------------------------------------------
+// Hooks panel
+// ---------------------------------------------------------------------------
+
+const HOOK_SUBSECTIONS: Array<{
+  key: keyof WorkflowHooks
+  label: string
+  when: string
+}> = [
+  { key: 'activationStepsPrepend', label: 'Before activation', when: 'Runs before the workflow instructions are loaded into the agent' },
+  { key: 'activationStepsAppend', label: 'After activation', when: 'Runs after the workflow loads, before the first user interaction' },
+  { key: 'onComplete', label: 'On complete', when: 'Runs when the workflow signals completion' },
+]
+
+const SHELL_META_RE = /(?<!['""])([&|;`]|\$\()/
+
+function HooksPanel({ workflowId, initialHooks, isV65 }: {
+  workflowId: string
+  initialHooks: WorkflowHooks | undefined
+  isV65: boolean
+}) {
+  const emptyHooks = (): WorkflowHooks => ({
+    activationStepsPrepend: [],
+    activationStepsAppend: [],
+    onComplete: [],
+  })
+
+  const [hooks, setHooks] = useState<WorkflowHooks>(initialHooks ?? emptyHooks())
+  const [addingTo, setAddingTo] = useState<keyof WorkflowHooks | null>(null)
+  const [newCmd, setNewCmd] = useState('')
+  const [cmdError, setCmdError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const addInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setHooks(initialHooks ?? emptyHooks())
+  }, [workflowId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (addingTo) setTimeout(() => addInputRef.current?.focus(), 50)
+  }, [addingTo])
+
+  async function save(updated: WorkflowHooks) {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const resp = await fetch(`/api/workflows/${workflowId}/hooks`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      })
+      if (!resp.ok) {
+        const data = (await resp.json()) as { error?: { message?: string } }
+        throw new Error(data.error?.message ?? 'Failed to save hooks')
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save')
+      setHooks(hooks) // revert optimistic update
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function update(key: keyof WorkflowHooks, entries: HookEntry[]) {
+    const updated = { ...hooks, [key]: entries }
+    setHooks(updated)
+    void save(updated)
+  }
+
+  function handleAdd(key: keyof WorkflowHooks) {
+    const cmd = newCmd.trim()
+    if (!cmd) { setCmdError('Command cannot be empty'); return }
+    setNewCmd('')
+    setCmdError(null)
+    setAddingTo(null)
+    update(key, [...hooks[key], { command: cmd }])
+  }
+
+  function handleToggle(key: keyof WorkflowHooks, idx: number) {
+    const entries = hooks[key].map((e, i) =>
+      i === idx ? { ...e, disabled: !e.disabled } : e,
+    )
+    update(key, entries)
+  }
+
+  function handleDelete(key: keyof WorkflowHooks, idx: number) {
+    update(key, hooks[key].filter((_, i) => i !== idx))
+  }
+
+  function handleMove(key: keyof WorkflowHooks, idx: number, dir: -1 | 1) {
+    const entries = [...hooks[key]]
+    const target = idx + dir
+    if (target < 0 || target >= entries.length) return;
+    [entries[idx], entries[target]] = [entries[target], entries[idx]]
+    update(key, entries)
+  }
+
+  if (!isV65) return null
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Zap size={14} className="text-[var(--color-accent)]" />
+        <h3 className="text-sm font-bold">Workflow Hooks</h3>
+        {saving && <span className="text-xs text-[var(--color-muted)] ml-auto">Saving…</span>}
+      </div>
+      <p className="text-xs text-[var(--color-muted)] mb-4">
+        Shell commands Studio runs automatically at key moments in this workflow's lifecycle.
+      </p>
+
+      {saveError && (
+        <div className="mb-3 flex items-center gap-2 text-xs text-[var(--color-error)] bg-[var(--color-error)]/10 rounded-md px-3 py-2">
+          <AlertTriangle size={12} />
+          {saveError}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {HOOK_SUBSECTIONS.map(({ key, label, when }) => {
+          const entries = hooks[key]
+          const isAdding = addingTo === key
+
+          return (
+            <div key={key} className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] overflow-hidden">
+              <div className="px-3 py-2.5 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg)]">
+                <p className="text-xs font-bold text-[var(--color-text)]">{label}</p>
+                <p className="text-[10px] text-[var(--color-muted)] mt-0.5">{when}</p>
+              </div>
+
+              <div className="p-2 space-y-1.5">
+                {entries.length === 0 && !isAdding && (
+                  <p className="text-xs text-[var(--color-muted)] px-2 py-1">No commands configured</p>
+                )}
+
+                {entries.map((entry, idx) => {
+                  const hasMetaChars = SHELL_META_RE.test(entry.command)
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-md border ${entry.disabled ? 'opacity-50 border-[var(--color-border-subtle)]' : 'border-[var(--color-border-subtle)]'} bg-[var(--color-bg)]`}
+                    >
+                      <code className="flex-1 text-xs font-[var(--font-mono)] text-[var(--color-accent)] truncate" title={entry.command}>
+                        $ {entry.command}
+                      </code>
+                      {hasMetaChars && (
+                        <span title="Command contains shell metacharacters — ensure this is intentional" className="shrink-0">
+                          <AlertTriangle size={11} className="text-amber-400" />
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleToggle(key, idx)}
+                        title={entry.disabled ? 'Enable' : 'Disable'}
+                        className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors shrink-0"
+                      >
+                        {entry.disabled
+                          ? <ToggleLeft size={14} />
+                          : <ToggleRight size={14} className="text-[var(--color-accent)]" />}
+                      </button>
+                      <div className="flex flex-col shrink-0">
+                        <button onClick={() => handleMove(key, idx, -1)} disabled={idx === 0} className="text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-20 transition-colors">
+                          <ChevronUp size={11} />
+                        </button>
+                        <button onClick={() => handleMove(key, idx, 1)} disabled={idx === entries.length - 1} className="text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-20 transition-colors">
+                          <ChevronDown size={11} />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleDelete(key, idx)}
+                        title="Remove"
+                        className="text-[var(--color-muted)] hover:text-[var(--color-error)] transition-colors shrink-0"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  )
+                })}
+
+                {isAdding ? (
+                  <div className="flex items-center gap-2 px-2 py-1">
+                    <code className="text-xs text-[var(--color-muted)] font-[var(--font-mono)]">$</code>
+                    <input
+                      ref={addInputRef}
+                      value={newCmd}
+                      onChange={(e) => { setNewCmd(e.target.value); setCmdError(null) }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAdd(key)
+                        if (e.key === 'Escape') { setAddingTo(null); setNewCmd(''); setCmdError(null) }
+                      }}
+                      placeholder="shell command…"
+                      className="flex-1 text-xs font-[var(--font-mono)] bg-[var(--color-surface-raised)] border border-[var(--color-accent)] rounded px-2 py-1 focus:outline-none"
+                    />
+                    <button onClick={() => handleAdd(key)} className="text-xs font-bold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] shrink-0">Add</button>
+                    <button onClick={() => { setAddingTo(null); setNewCmd(''); setCmdError(null) }} className="text-xs text-[var(--color-muted)] shrink-0">Cancel</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingTo(key)}
+                    className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors px-2 py-1"
+                  >
+                    <Plus size={11} />
+                    Add command
+                  </button>
+                )}
+
+                {cmdError && addingTo === key && (
+                  <p className="text-[10px] text-[var(--color-error)] px-2">{cmdError}</p>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanelProps) {
@@ -693,6 +910,9 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
               </div>
             </div>
           )}
+
+          {/* Workflow Hooks — v6.5 only */}
+          <HooksPanel workflowId={workflowId} initialHooks={workflow.hooks} isV65={!isNotV65} />
 
           {/* Agent-based: Agents & Resources with clickable files */}
           {workflow.type === 'agent-based' && supportingFileGroups.length > 0 && (
