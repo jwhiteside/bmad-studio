@@ -1,11 +1,85 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { parse as parseToml } from 'smol-toml'
 import type { FastifyInstance } from 'fastify'
-import type { WorkflowListItem } from '@bmad-studio/shared'
+import type { WorkflowListItem, WorkflowHooks, HookEntry } from '@bmad-studio/shared'
 
 import { NotFoundError, ValidationError } from '../core/errors.js'
 import { writeFile } from '../core/write-service.js'
+import { atomicWrite } from '../core/atomic-write.js'
+
+// ---------------------------------------------------------------------------
+// Hook TOML serialisation helpers
+// ---------------------------------------------------------------------------
+
+function serializeTomlValue(val: string | string[] | boolean | number): string {
+  if (typeof val === 'boolean') return String(val)
+  if (typeof val === 'number') return String(val)
+  if (Array.isArray(val)) return `[${val.map((s) => JSON.stringify(s)).join(', ')}]`
+  return JSON.stringify(val)
+}
+
+function serializeSection(name: string, values: Record<string, unknown>): string {
+  const lines = [`[${name}]`]
+  for (const [key, val] of Object.entries(values)) {
+    if (val == null) continue
+    if (typeof val === 'string' || typeof val === 'boolean' || typeof val === 'number') {
+      lines.push(`${key} = ${serializeTomlValue(val)}`)
+    } else if (Array.isArray(val) && val.every((v) => typeof v === 'string')) {
+      lines.push(`${key} = ${serializeTomlValue(val as string[])}`)
+    }
+  }
+  return lines.join('\n')
+}
+
+function buildHooksToml(existing: Record<string, unknown>, hooks: WorkflowHooks): string {
+  // Preserve existing [workflow] non-hook fields
+  const existingWorkflow = ((existing.workflow ?? {}) as Record<string, unknown>)
+  const { activation_steps_prepend: _a, activation_steps_append: _b, on_complete: _c, ...nonHookWorkflow } = existingWorkflow
+
+  // Build new [workflow] block
+  const newWorkflow: Record<string, unknown> = { ...nonHookWorkflow }
+
+  function encodeHooks(entries: HookEntry[]): string | string[] | undefined {
+    if (entries.length === 0) return undefined
+    const cmds = entries.map((e) => e.command)
+    return cmds.length === 1 ? cmds[0] : cmds
+  }
+
+  const prepend = encodeHooks(hooks.activationStepsPrepend)
+  if (prepend !== undefined) newWorkflow.activation_steps_prepend = prepend
+  const append = encodeHooks(hooks.activationStepsAppend)
+  if (append !== undefined) newWorkflow.activation_steps_append = append
+  const onComplete = encodeHooks(hooks.onComplete)
+  if (onComplete !== undefined) newWorkflow.on_complete = onComplete
+
+  // Serialize all sections (non-workflow first, then workflow)
+  const sections: string[] = []
+  for (const [sectionKey, sectionVal] of Object.entries(existing)) {
+    if (sectionKey === 'workflow') continue
+    if (typeof sectionVal === 'object' && sectionVal !== null) {
+      const s = serializeSection(sectionKey, sectionVal as Record<string, unknown>)
+      if (s.split('\n').length > 1) sections.push(s)
+    }
+  }
+  if (Object.keys(newWorkflow).length > 0) {
+    sections.push(serializeSection('workflow', newWorkflow))
+  }
+
+  const toml = sections.join('\n\n')
+
+  // Sidecar disabled-state block
+  const disabledCmds = [
+    ...hooks.activationStepsPrepend,
+    ...hooks.activationStepsAppend,
+    ...hooks.onComplete,
+  ].filter((e) => e.disabled).map((e) => e.command)
+
+  if (disabledCmds.length === 0) return toml
+  const sidecar = ['# bmad-studio:hook-state', ...disabledCmds.map((cmd) => `# ${cmd}=disabled`)].join('\n')
+  return toml ? `${toml}\n\n${sidecar}` : sidecar
+}
 
 function toKebab(s: string): string {
   return s
@@ -118,15 +192,23 @@ export async function workflowsPlugin(app: FastifyInstance) {
     if (!('fileStore' in app)) return []
     const index = app.fileStore.getIndex()
     return index.workflows.map(
-      (w): WorkflowListItem => ({
-        id: w.id,
-        name: w.name,
-        description: w.description,
-        module: w.module,
-        stepCount: w.steps.length,
-        type: w.type,
-        phase: w.phase,
-      }),
+      (w): WorkflowListItem => {
+        const hookCount = w.hooks
+          ? (w.hooks.activationStepsPrepend?.length ?? 0) +
+            (w.hooks.activationStepsAppend?.length ?? 0) +
+            (w.hooks.onComplete?.length ?? 0)
+          : 0
+        return {
+          id: w.id,
+          name: w.name,
+          description: w.description,
+          module: w.module,
+          stepCount: w.steps.length,
+          type: w.type,
+          phase: w.phase,
+          hookCount: hookCount > 0 ? hookCount : undefined,
+        }
+      },
     )
   })
 
@@ -270,6 +352,38 @@ export async function workflowsPlugin(app: FastifyInstance) {
       }
 
       return { groups }
+    },
+  )
+
+  // Update workflow hooks (writes/creates customize.toml)
+  app.put<{ Params: { id: string }; Body: WorkflowHooks }>(
+    '/api/workflows/:id/hooks',
+    async (request) => {
+      if (!('fileStore' in app)) throw new NotFoundError('File store not available')
+      const index = app.fileStore.getIndex()
+      const workflow = index.workflows.find((w) => w.id === request.params.id)
+      if (!workflow) throw new NotFoundError(`Workflow "${request.params.id}" not found`)
+
+      const hooks = request.body as WorkflowHooks
+      if (!hooks || typeof hooks !== 'object') throw new ValidationError('Invalid hooks payload')
+
+      const skillPath = path.dirname(workflow.filePath)
+      const customizePath = path.join(skillPath, 'customize.toml')
+
+      let existing: Record<string, unknown> = {}
+      if (fs.existsSync(customizePath)) {
+        try {
+          existing = parseToml(fs.readFileSync(customizePath, 'utf-8')) as Record<string, unknown>
+        } catch {
+          // parse failure — start fresh, don't corrupt with bad base
+        }
+      }
+
+      const toml = buildHooksToml(existing, hooks)
+      await atomicWrite(customizePath, toml)
+      app.fileStore.rebuild()
+
+      return { ok: true }
     },
   )
 }

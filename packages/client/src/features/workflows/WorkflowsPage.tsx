@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { GitBranch, Plus, HelpCircle, X, Users, Layers, BookMarked } from 'lucide-react'
+import { GitBranch, Plus, HelpCircle, X, Users, Layers, BookMarked, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { WORKFLOW_TYPE_DEFINITIONS } from '@bmad-studio/shared'
@@ -148,6 +148,7 @@ export function WorkflowsPage() {
   const [selectedId, setSelectedId] = useDetailParam('detail')
   const [activeModule, setActiveModule] = useState<string>('all')
   const [search, setSearch] = useState('')
+  const [hooksOnly, setHooksOnly] = useState(false)
 
   const modules = useMemo(() => {
     if (!workflows) return []
@@ -167,11 +168,16 @@ export function WorkflowsPage() {
     return counts
   }, [workflows])
 
+  const hasAnyHooks = useMemo(() => workflows?.some((wf) => (wf.hookCount ?? 0) > 0) ?? false, [workflows])
+
   const filtered = useMemo(() => {
     if (!workflows) return []
     let result = workflows
     if (activeModule !== 'all') {
       result = result.filter((wf) => wf.module === activeModule)
+    }
+    if (hooksOnly) {
+      result = result.filter((wf) => (wf.hookCount ?? 0) > 0)
     }
     if (search) {
       const q = search.toLowerCase()
@@ -182,7 +188,7 @@ export function WorkflowsPage() {
       )
     }
     return result
-  }, [workflows, activeModule, search])
+  }, [workflows, activeModule, hooksOnly, search])
 
   const phaseGroups = useMemo(() => groupByPhase(filtered), [filtered])
 
@@ -267,6 +273,22 @@ export function WorkflowsPage() {
 
         {showTypeGuide && <TypeGuide onClose={() => setShowTypeGuide(false)} />}
 
+        {hasAnyHooks && (
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => setHooksOnly((v) => !v)}
+              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors font-bold ${
+                hooksOnly
+                  ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)]/40 text-[var(--color-accent)]'
+                  : 'border-[var(--color-border-subtle)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:border-[var(--color-accent)]/40'
+              }`}
+            >
+              <Zap size={10} />
+              Has hooks
+            </button>
+          </div>
+        )}
+
         <div className="space-y-6">
             {phaseGroups.map(([phase, wfs]) => (
               <div key={phase}>
@@ -295,6 +317,12 @@ export function WorkflowsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-[var(--color-muted)]">
+                        {(wf.hookCount ?? 0) > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] text-[10px] font-bold shrink-0" title={`${wf.hookCount} hook${wf.hookCount !== 1 ? 's' : ''} configured`}>
+                            <Zap size={9} />
+                            {wf.hookCount}
+                          </span>
+                        )}
                         {(wf.module === 'bmm' || wf.module === 'bmb') && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold shrink-0">
                             <BookMarked size={9} />

@@ -1,14 +1,16 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { X, GitBranch, Users, FileOutput, FileInput, FileText, FolderOpen, Layers, ChevronDown, ChevronRight, Pencil, ArrowRight, BookMarked, Save } from 'lucide-react'
+import { X, GitBranch, Users, FileOutput, FileInput, FileText, FolderOpen, Layers, ChevronDown, ChevronRight, Pencil, ArrowRight, BookMarked, Save, Zap, Plus, Trash2, ChevronUp, AlertTriangle, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { CopyLinkButton } from '../../shared/CopyLinkButton.js'
 
 import { WORKFLOW_TYPE_DEFINITIONS } from '@bmad-studio/shared'
-import type { WorkflowStep } from '@bmad-studio/shared'
+import type { WorkflowStep, WorkflowHooks, HookEntry } from '@bmad-studio/shared'
 
 import { useWorkflowDetail } from './use-workflows.js'
 import { WorkflowTypeBadge } from './WorkflowsPage.js'
+import { HOOK_PRESETS, PRESET_CATEGORIES, resolvePreset } from './hook-presets.js'
+import type { HookPreset } from './hook-presets.js'
 import { EditWorkflowDialog } from './EditWorkflowDialog.js'
 import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
 import { CodeMirrorEditor } from '../../shared/markdown-editor/CodeMirrorEditor.js'
@@ -65,6 +67,377 @@ function groupStepsByVariant(steps: WorkflowStep[]): StepGroup[] {
     if (b.key === '__primary') return 1
     return a.key.localeCompare(b.key)
   })
+}
+
+// ---------------------------------------------------------------------------
+// Hooks panel
+// ---------------------------------------------------------------------------
+
+const HOOK_SUBSECTIONS: Array<{
+  key: keyof WorkflowHooks
+  label: string
+  when: string
+}> = [
+  { key: 'activationStepsPrepend', label: 'Before activation', when: 'Runs before the workflow instructions are loaded into the agent' },
+  { key: 'activationStepsAppend', label: 'After activation', when: 'Runs after the workflow loads, before the first user interaction' },
+  { key: 'onComplete', label: 'On complete', when: 'Runs when the workflow signals completion' },
+]
+
+const SHELL_META_RE = /(?<!['""])([&|;`]|\$\()/
+
+// ---------------------------------------------------------------------------
+// Preset picker
+// ---------------------------------------------------------------------------
+
+function PresetPicker({ hookKey, onAdd, onClose }: {
+  hookKey: keyof WorkflowHooks
+  onAdd: (command: string) => void
+  onClose: () => void
+}) {
+  const [selected, setSelected] = useState<HookPreset | null>(null)
+  const [vars, setVars] = useState<Record<string, string>>({})
+
+  // All presets; sort so "custom" is last
+  const presets = HOOK_PRESETS.slice().sort((a, b) => {
+    if (a.category === 'custom') return 1
+    if (b.category === 'custom') return -1
+    return 0
+  })
+
+  const categories = Array.from(new Set(presets.map((p) => p.category)))
+
+  function selectPreset(preset: HookPreset) {
+    setSelected(preset)
+    const initial: Record<string, string> = {}
+    preset.variables.forEach((v) => { initial[v.key] = '' })
+    setVars(initial)
+  }
+
+  function handleConfirm() {
+    if (!selected) return
+    onAdd(resolvePreset(selected, vars))
+    onClose()
+  }
+
+  const allFilled = selected
+    ? selected.variables.every((v) => vars[v.key]?.trim())
+    : false
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-[var(--color-bg)] rounded-xl border border-[var(--color-border-subtle)] shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--color-border-subtle)]">
+          <div className="flex items-center gap-2">
+            <Zap size={14} className="text-[var(--color-accent)]" />
+            <span className="text-sm font-bold">Add from template</span>
+          </div>
+          <button onClick={onClose} className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex" style={{ minHeight: 300 }}>
+          {/* Preset list */}
+          <div className="w-56 shrink-0 border-r border-[var(--color-border-subtle)] overflow-y-auto" style={{ maxHeight: 420 }}>
+            {categories.map((cat) => (
+              <div key={cat}>
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)] bg-[var(--color-surface-raised)] sticky top-0">
+                  {PRESET_CATEGORIES[cat]}
+                </div>
+                {presets.filter((p) => p.category === cat).map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => selectPreset(preset)}
+                    className={`w-full text-left px-3 py-2.5 transition-colors border-b border-[var(--color-border-subtle)]/50 ${
+                      selected?.id === preset.id
+                        ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
+                        : 'hover:bg-[var(--color-surface-raised)] text-[var(--color-text)]'
+                    }`}
+                  >
+                    <p className="text-xs font-bold">{preset.label}</p>
+                    <p className="text-[10px] text-[var(--color-muted)] mt-0.5 leading-tight">{preset.description}</p>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Variable form */}
+          <div className="flex-1 p-5 overflow-y-auto" style={{ maxHeight: 420 }}>
+            {!selected ? (
+              <p className="text-sm text-[var(--color-muted)] text-center mt-8">Select a template to configure it.</p>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-bold mb-0.5">{selected.label}</p>
+                  <p className="text-[10px] text-[var(--color-muted)]">{selected.description}</p>
+                  <p className="text-[10px] text-[var(--color-muted)] mt-1">
+                    Adds to: <span className="font-bold">{HOOK_SUBSECTIONS.find((s) => s.key === hookKey)?.label ?? hookKey}</span>
+                  </p>
+                </div>
+
+                {selected.variables.map((v) => (
+                  <div key={v.key}>
+                    <label className="text-[11px] font-bold block mb-1">{v.label}</label>
+                    {v.description && (
+                      <p className="text-[10px] text-[var(--color-muted)] mb-1">{v.description}</p>
+                    )}
+                    <input
+                      value={vars[v.key] ?? ''}
+                      onChange={(e) => setVars((prev) => ({ ...prev, [v.key]: e.target.value }))}
+                      placeholder={v.placeholder}
+                      className="w-full text-xs font-[var(--font-mono)] bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] rounded px-2.5 py-1.5 focus:outline-none focus:border-[var(--color-accent)]"
+                    />
+                  </div>
+                ))}
+
+                {selected.variables.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-[var(--color-muted)] mb-1">Preview</p>
+                    <code className="block text-[10px] font-[var(--font-mono)] bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)] rounded p-2 text-[var(--color-accent)] break-all whitespace-pre-wrap">
+                      {resolvePreset(selected, vars) || '…'}
+                    </code>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 px-5 py-3.5 border-t border-[var(--color-border-subtle)]">
+          <button onClick={onClose} className="px-3 py-1.5 text-xs rounded-md border border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-raised)] transition-colors">Cancel</button>
+          <button
+            onClick={handleConfirm}
+            disabled={!selected || !allFilled}
+            className="px-3 py-1.5 text-xs font-bold rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Add command
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HooksPanel({ workflowId, initialHooks, isV65 }: {
+  workflowId: string
+  initialHooks: WorkflowHooks | undefined
+  isV65: boolean
+}) {
+  const emptyHooks = (): WorkflowHooks => ({
+    activationStepsPrepend: [],
+    activationStepsAppend: [],
+    onComplete: [],
+  })
+
+  const [hooks, setHooks] = useState<WorkflowHooks>(initialHooks ?? emptyHooks())
+  const [addingTo, setAddingTo] = useState<keyof WorkflowHooks | null>(null)
+  const [newCmd, setNewCmd] = useState('')
+  const [cmdError, setCmdError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [presetKey, setPresetKey] = useState<keyof WorkflowHooks | null>(null)
+  const addInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setHooks(initialHooks ?? emptyHooks())
+  }, [workflowId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (addingTo) setTimeout(() => addInputRef.current?.focus(), 50)
+  }, [addingTo])
+
+  async function save(updated: WorkflowHooks) {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const resp = await fetch(`/api/workflows/${workflowId}/hooks`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      })
+      if (!resp.ok) {
+        const data = (await resp.json()) as { error?: { message?: string } }
+        throw new Error(data.error?.message ?? 'Failed to save hooks')
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save')
+      setHooks(hooks) // revert optimistic update
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function update(key: keyof WorkflowHooks, entries: HookEntry[]) {
+    const updated = { ...hooks, [key]: entries }
+    setHooks(updated)
+    void save(updated)
+  }
+
+  function handleAdd(key: keyof WorkflowHooks) {
+    const cmd = newCmd.trim()
+    if (!cmd) { setCmdError('Command cannot be empty'); return }
+    setNewCmd('')
+    setCmdError(null)
+    setAddingTo(null)
+    update(key, [...hooks[key], { command: cmd }])
+  }
+
+  function handleToggle(key: keyof WorkflowHooks, idx: number) {
+    const entries = hooks[key].map((e, i) =>
+      i === idx ? { ...e, disabled: !e.disabled } : e,
+    )
+    update(key, entries)
+  }
+
+  function handleDelete(key: keyof WorkflowHooks, idx: number) {
+    update(key, hooks[key].filter((_, i) => i !== idx))
+  }
+
+  function handleMove(key: keyof WorkflowHooks, idx: number, dir: -1 | 1) {
+    const entries = [...hooks[key]]
+    const target = idx + dir
+    if (target < 0 || target >= entries.length) return;
+    [entries[idx], entries[target]] = [entries[target], entries[idx]]
+    update(key, entries)
+  }
+
+  if (!isV65) return null
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Zap size={14} className="text-[var(--color-accent)]" />
+        <h3 className="text-sm font-bold">Workflow Hooks</h3>
+        {saving && <span className="text-xs text-[var(--color-muted)] ml-auto">Saving…</span>}
+      </div>
+      <p className="text-xs text-[var(--color-muted)] mb-4">
+        Shell commands Studio runs automatically at key moments in this workflow's lifecycle.
+      </p>
+
+      {saveError && (
+        <div className="mb-3 flex items-center gap-2 text-xs text-[var(--color-error)] bg-[var(--color-error)]/10 rounded-md px-3 py-2">
+          <AlertTriangle size={12} />
+          {saveError}
+        </div>
+      )}
+
+      {presetKey && (
+        <PresetPicker
+          hookKey={presetKey}
+          onAdd={(cmd) => update(presetKey, [...hooks[presetKey], { command: cmd }])}
+          onClose={() => setPresetKey(null)}
+        />
+      )}
+
+      <div className="space-y-4">
+        {HOOK_SUBSECTIONS.map(({ key, label, when }) => {
+          const entries = hooks[key]
+          const isAdding = addingTo === key
+
+          return (
+            <div key={key} className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] overflow-hidden">
+              <div className="px-3 py-2.5 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg)]">
+                <p className="text-xs font-bold text-[var(--color-text)]">{label}</p>
+                <p className="text-[10px] text-[var(--color-muted)] mt-0.5">{when}</p>
+              </div>
+
+              <div className="p-2 space-y-1.5">
+                {entries.length === 0 && !isAdding && (
+                  <p className="text-xs text-[var(--color-muted)] px-2 py-1">No commands configured</p>
+                )}
+
+                {entries.map((entry, idx) => {
+                  const hasMetaChars = SHELL_META_RE.test(entry.command)
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-md border ${entry.disabled ? 'opacity-50 border-[var(--color-border-subtle)]' : 'border-[var(--color-border-subtle)]'} bg-[var(--color-bg)]`}
+                    >
+                      <code className="flex-1 text-xs font-[var(--font-mono)] text-[var(--color-accent)] truncate" title={entry.command}>
+                        $ {entry.command}
+                      </code>
+                      {hasMetaChars && (
+                        <span title="Command contains shell metacharacters — ensure this is intentional" className="shrink-0">
+                          <AlertTriangle size={11} className="text-amber-400" />
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleToggle(key, idx)}
+                        title={entry.disabled ? 'Enable' : 'Disable'}
+                        className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors shrink-0"
+                      >
+                        {entry.disabled
+                          ? <ToggleLeft size={14} />
+                          : <ToggleRight size={14} className="text-[var(--color-accent)]" />}
+                      </button>
+                      <div className="flex flex-col shrink-0">
+                        <button onClick={() => handleMove(key, idx, -1)} disabled={idx === 0} className="text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-20 transition-colors">
+                          <ChevronUp size={11} />
+                        </button>
+                        <button onClick={() => handleMove(key, idx, 1)} disabled={idx === entries.length - 1} className="text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-20 transition-colors">
+                          <ChevronDown size={11} />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleDelete(key, idx)}
+                        title="Remove"
+                        className="text-[var(--color-muted)] hover:text-[var(--color-error)] transition-colors shrink-0"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  )
+                })}
+
+                {isAdding ? (
+                  <div className="flex items-center gap-2 px-2 py-1">
+                    <code className="text-xs text-[var(--color-muted)] font-[var(--font-mono)]">$</code>
+                    <input
+                      ref={addInputRef}
+                      value={newCmd}
+                      onChange={(e) => { setNewCmd(e.target.value); setCmdError(null) }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAdd(key)
+                        if (e.key === 'Escape') { setAddingTo(null); setNewCmd(''); setCmdError(null) }
+                      }}
+                      placeholder="shell command…"
+                      className="flex-1 text-xs font-[var(--font-mono)] bg-[var(--color-surface-raised)] border border-[var(--color-accent)] rounded px-2 py-1 focus:outline-none"
+                    />
+                    <button onClick={() => handleAdd(key)} className="text-xs font-bold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] shrink-0">Add</button>
+                    <button onClick={() => { setAddingTo(null); setNewCmd(''); setCmdError(null) }} className="text-xs text-[var(--color-muted)] shrink-0">Cancel</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setAddingTo(key)}
+                      className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors px-2 py-1"
+                    >
+                      <Plus size={11} />
+                      Add command
+                    </button>
+                    <span className="text-[var(--color-border-subtle)]">·</span>
+                    <button
+                      onClick={() => setPresetKey(key)}
+                      className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors px-2 py-1"
+                    >
+                      <Zap size={11} />
+                      Use template
+                    </button>
+                  </div>
+                )}
+
+                {cmdError && addingTo === key && (
+                  <p className="text-[10px] text-[var(--color-error)] px-2">{cmdError}</p>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanelProps) {
@@ -693,6 +1066,9 @@ export function WorkflowDetailPanel({ workflowId, onClose }: WorkflowDetailPanel
               </div>
             </div>
           )}
+
+          {/* Workflow Hooks — v6.5 only */}
+          <HooksPanel workflowId={workflowId} initialHooks={workflow.hooks} isV65={!isNotV65} />
 
           {/* Agent-based: Agents & Resources with clickable files */}
           {workflow.type === 'agent-based' && supportingFileGroups.length > 0 && (
