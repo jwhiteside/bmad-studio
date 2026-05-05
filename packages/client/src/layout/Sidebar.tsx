@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Loader2,
   FileText,
+  BookOpen,
 } from 'lucide-react'
 
 import type { WebSocketEvent } from '@bmad-studio/shared'
@@ -41,6 +42,7 @@ const outputsGroup: NavGroup = {
   icon: FileOutput,
   items: [
     { to: '/outputs', label: 'Browse All', icon: FileOutput },
+    { to: '/wiki', label: 'Wiki', icon: BookOpen },
   ],
 }
 

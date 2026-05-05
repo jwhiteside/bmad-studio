@@ -10,6 +10,7 @@ import { AgentOverrideEditor } from './features/agents/AgentOverrideEditor.js'
 import { TeamsPage } from './features/teams/TeamsPage.js'
 import { SkillsPage } from './features/skills/SkillsPage.js'
 import { WorkflowsPage } from './features/workflows/WorkflowsPage.js'
+import { WorkflowDetailPage } from './features/workflows/WorkflowDetailPage.js'
 import { OutputsPage } from './features/outputs/OutputsPage.js'
 import { ConnectionsPage } from './features/connections/ConnectionsPage.js'
 import { ProjectContextEditorPage } from './features/project-context/ProjectContextEditorPage.js'
@@ -19,6 +20,7 @@ import { SettingsPage } from './features/settings/SettingsPage.js'
 import { AboutPage } from './features/about/AboutPage.js'
 import { CommandsPage } from './features/commands/CommandsPage.js'
 import { ToolkitPage } from './features/toolkit/ToolkitPage.js'
+import { WikiEditorPage } from './features/wiki/WikiEditorPage.js'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +45,7 @@ export function App() {
               <Route path="teams" element={<TeamsPage />} />
               <Route path="skills" element={<SkillsPage />} />
               <Route path="workflows" element={<WorkflowsPage />} />
+              <Route path="workflows/:id" element={<WorkflowDetailPage />} />
               <Route path="outputs" element={<OutputsPage />} />
               <Route path="connections" element={<ConnectionsPage />} />
               <Route path="workspace" element={<Navigate to="/project-context" replace />} />
@@ -52,6 +55,7 @@ export function App() {
               <Route path="toolkit" element={<ToolkitPage />} />
               <Route path="commands" element={<CommandsPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="wiki" element={<WikiEditorPage />} />
               <Route path="about" element={<AboutPage />} />
             </Route>
           </Routes>

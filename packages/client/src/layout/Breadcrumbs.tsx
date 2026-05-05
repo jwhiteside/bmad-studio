@@ -14,6 +14,7 @@ const routeLabels: Record<string, string> = {
   packages: 'Packages',
   files: 'Files',
   settings: 'Settings',
+  wiki: 'Wiki',
 }
 
 function SearchButton() {

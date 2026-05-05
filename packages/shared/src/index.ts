@@ -70,3 +70,4 @@ export type { LayerOrigin, Resolved, HookEntry, WorkflowHooks } from './types/Cu
 export type { LintRule, LintFinding } from './linter/types.js'
 export { runLinter, computeQualityScore, scoreLabel } from './linter/engine.js'
 export { PC_RULES } from './linter/rules/pc-rules.js'
+export type { WikiPage, WikiPageListItem, WikiIndex } from './wiki.js'
