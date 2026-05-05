@@ -26,6 +26,7 @@ import { commandsPlugin } from './plugins/commands-plugin.js'
 import { datasourcesPlugin } from './plugins/datasources-plugin.js'
 import { customizePlugin } from './plugins/customize-plugin.js'
 import { projectContextPlugin } from './plugins/project-context-plugin.js'
+import { driftPlugin } from './plugins/drift-plugin.js'
 import { detectProject, type ProjectDetectionResult } from './core/project-detector.js'
 import { probePython } from './v65/python-bridge.js'
 
@@ -217,6 +218,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   await app.register(datasourcesPlugin)
   await app.register(customizePlugin)
   await app.register(projectContextPlugin)
+  await app.register(driftPlugin)
 
   if (options.serveStatic !== false) {
     await registerStatic(app)

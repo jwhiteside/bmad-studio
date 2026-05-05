@@ -25,6 +25,7 @@ import { useThemeStore } from '../stores/ui-store.js'
 import { useWebSocket } from '../hooks/use-websocket.js'
 import { useAppTitle } from '../hooks/use-app-title.js'
 import { useProjectMode } from '../lib/use-project-mode.js'
+import { DriftBadge } from '../features/drift/DriftBadge.js'
 
 type ProjectEntry = { path: string; name: string; lastOpened: string }
 
@@ -293,6 +294,7 @@ export function Sidebar() {
             )}
           </div>
         )}
+        <DriftBadge />
       </div>
 
       <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto pt-1" aria-label="Main navigation">
