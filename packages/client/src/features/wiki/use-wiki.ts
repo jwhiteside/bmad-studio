@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-import type { WikiPage, WikiPageListItem, WikiIndex } from '@bmad-studio/shared'
+import type {
+  WikiPage,
+  WikiPageListItem,
+  WikiIndex,
+  WikiImportPreviewItem,
+  WikiImportResult,
+} from '@bmad-studio/shared'
 
 // ---------------------------------------------------------------------------
 // Fetchers
@@ -47,6 +53,25 @@ async function updateWikiPage(slug: string, body: string): Promise<WikiPage> {
 async function deleteWikiPage(slug: string): Promise<void> {
   const res = await fetch(`/api/wiki/${encodeURIComponent(slug)}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(`Failed to delete wiki page: ${slug}`)
+}
+
+async function fetchImportPreview(): Promise<{ items: WikiImportPreviewItem[] }> {
+  const res = await fetch('/api/wiki/import/preview')
+  if (!res.ok) throw new Error('Failed to fetch import preview')
+  return res.json() as Promise<{ items: WikiImportPreviewItem[] }>
+}
+
+async function runImport(relPaths: string[]): Promise<WikiImportResult> {
+  const res = await fetch('/api/wiki/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ relPaths }),
+  })
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new Error(data.error?.message ?? 'Import failed')
+  }
+  return res.json() as Promise<WikiImportResult>
 }
 
 // ---------------------------------------------------------------------------
@@ -96,5 +121,24 @@ export function useDeleteWikiPage() {
   })
 }
 
-// Re-export types so callers don't need to import from shared
-export type { WikiPage, WikiPageListItem, WikiIndex }
+export function useWikiImportPreview() {
+  return useQuery({
+    queryKey: ['wiki', 'import', 'preview'],
+    queryFn: fetchImportPreview,
+    staleTime: 0, // always re-fetch when dialog opens
+  })
+}
+
+export function useWikiImport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: runImport,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['wiki'] })
+      void qc.invalidateQueries({ queryKey: ['wiki', 'import', 'preview'] })
+    },
+  })
+}
+
+// Re-export types for convenience
+export type { WikiPage, WikiPageListItem, WikiIndex, WikiImportPreviewItem, WikiImportResult }
