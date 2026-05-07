@@ -1,17 +1,15 @@
 import { useState, useMemo } from 'react'
 import { GitBranch, Plus, HelpCircle, X, Users, Layers, BookMarked, Zap, CheckCircle2, AlertTriangle, Clock, HelpCircle as HelpIcon, ChevronDown, ChevronRight } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { WORKFLOW_TYPE_DEFINITIONS } from '@bmad-studio/shared'
 import type { WorkflowListItem, WorkflowType } from '@bmad-studio/shared'
 
 import { useWorkflows, useWorkflowStatuses, useWorkflowStatusLiveRefresh } from './use-workflows.js'
 import type { WorkflowStatusResult } from './use-workflows.js'
-import { WorkflowDetailPanel } from './WorkflowDetailPanel.js'
 import { EmptyState } from '../../shared/EmptyState.js'
 import { EntityPageHeader } from '../../shared/EntityPageHeader.js'
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js'
-import { useDetailParam } from '../../hooks/use-detail-param.js'
 
 const TYPE_BADGE_STYLES: Record<string, string> = {
   'step-based': 'border-[var(--color-border-subtle)] text-[var(--color-muted)]',
@@ -164,10 +162,10 @@ function StatusDot({ status }: { status: WorkflowStatusResult['status'] | undefi
 }
 
 export function WorkflowsPage() {
+  const navigate = useNavigate()
   const { data: workflows, isLoading, refetch } = useWorkflows()
   const [showCreate, setShowCreate] = useState(false)
   const [showTypeGuide, setShowTypeGuide] = useState(false)
-  const [selectedId, setSelectedId] = useDetailParam('detail')
   const [activeModule, setActiveModule] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [hooksOnly, setHooksOnly] = useState(false)
@@ -357,13 +355,9 @@ export function WorkflowsPage() {
 
                     return (
                     <div key={wf.id}>
-                      <div className={`rounded-lg border transition-colors ${
-                        selectedId === wf.id
-                          ? 'bg-[var(--color-surface-raised)] border-[var(--color-accent)]'
-                          : 'bg-[var(--color-surface-raised)] border-[var(--color-border-subtle)] hover:border-[var(--color-accent)]'
-                      }`}>
+                      <div className="rounded-lg border transition-colors bg-[var(--color-surface-raised)] border-[var(--color-border-subtle)] hover:border-[var(--color-accent)]">
                         <button
-                          onClick={() => setSelectedId(selectedId === wf.id ? null : wf.id)}
+                          onClick={() => navigate(`/workflows/${wf.id}`)}
                           className="w-full flex items-center justify-between p-4 cursor-pointer text-left"
                         >
                           <div className="flex items-center gap-3">
@@ -440,9 +434,6 @@ export function WorkflowsPage() {
           </div>
       </div>
 
-      {selectedId && (
-        <WorkflowDetailPanel workflowId={selectedId} onClose={() => setSelectedId(null)} />
-      )}
       {showCreate && (
         <CreateWorkflowDialog
           onClose={() => setShowCreate(false)}
