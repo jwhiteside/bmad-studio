@@ -24,7 +24,7 @@ async function fetchWikiPage(slug: string): Promise<WikiPage> {
   return res.json() as Promise<WikiPage>
 }
 
-async function createWikiPage(params: { title: string; body?: string }): Promise<WikiPage> {
+async function createWikiPage(params: { title: string; body?: string; category?: string }): Promise<WikiPage> {
   const res = await fetch('/api/wiki', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -72,6 +72,24 @@ async function runImport(relPaths: string[]): Promise<WikiImportResult> {
     throw new Error(data.error?.message ?? 'Import failed')
   }
   return res.json() as Promise<WikiImportResult>
+}
+
+async function generateClaudeMd(): Promise<{ ok: true; filePath: string }> {
+  const res = await fetch('/api/wiki/generate-claude-md', { method: 'POST' })
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new Error(data.error?.message ?? 'Failed to generate CLAUDE.md')
+  }
+  return res.json() as Promise<{ ok: true; filePath: string }>
+}
+
+async function generateIndex(): Promise<{ ok: true; filePath: string; pageCount: number }> {
+  const res = await fetch('/api/wiki/generate-index', { method: 'POST' })
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new Error(data.error?.message ?? 'Failed to generate index')
+  }
+  return res.json() as Promise<{ ok: true; filePath: string; pageCount: number }>
 }
 
 // ---------------------------------------------------------------------------
@@ -125,7 +143,7 @@ export function useWikiImportPreview() {
   return useQuery({
     queryKey: ['wiki', 'import', 'preview'],
     queryFn: fetchImportPreview,
-    staleTime: 0, // always re-fetch when dialog opens
+    staleTime: 0,
   })
 }
 
@@ -137,6 +155,18 @@ export function useWikiImport() {
       void qc.invalidateQueries({ queryKey: ['wiki'] })
       void qc.invalidateQueries({ queryKey: ['wiki', 'import', 'preview'] })
     },
+  })
+}
+
+export function useGenerateClaudeMd() {
+  return useMutation({ mutationFn: generateClaudeMd })
+}
+
+export function useGenerateIndex() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: generateIndex,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['wiki'] }),
   })
 }
 

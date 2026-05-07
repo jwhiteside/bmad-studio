@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Trash2, Save, BookOpen, Tag, ChevronDown, ChevronRight, FileText, Download } from 'lucide-react'
+import { Plus, Trash2, Save, BookOpen, Tag, ChevronDown, ChevronRight, FileText, Download, FileCode } from 'lucide-react'
 
 import { WIKI_CATEGORIES } from '@bmad-studio/shared'
 import type { WikiPageListItem } from './use-wiki.js'
@@ -10,6 +10,7 @@ import {
   useCreateWikiPage,
   useUpdateWikiPage,
   useDeleteWikiPage,
+  useGenerateClaudeMd,
 } from './use-wiki.js'
 import { WikiImportDialog } from './WikiImportDialog.js'
 import { CodeMirrorEditor } from '../../shared/markdown-editor/CodeMirrorEditor.js'
@@ -53,7 +54,7 @@ function NewPageDialog({
   onCreate: (title: string, category: string) => Promise<string | null>
 }) {
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState('Foundation')
+  const [category, setCategory] = useState<string>('Foundation')
   const [busy, setBusy] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -158,7 +159,18 @@ function PageSidebar({
   onNew: () => void
   onImport: () => void
 }) {
+  const { notify } = useNotifications()
+  const generateSchema = useGenerateClaudeMd()
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+
+  async function handleGenerateSchema() {
+    try {
+      await generateSchema.mutateAsync()
+      notify('success', 'CLAUDE.md generated in _bmad-output/wiki/')
+    } catch (err) {
+      notify('error', err instanceof Error ? err.message : 'Failed to generate schema')
+    }
+  }
 
   function toggleCategory(cat: string) {
     setCollapsed((prev) => {
@@ -213,6 +225,14 @@ function PageSidebar({
         >
           <Download size={12} />
           Import from outputs
+        </button>
+        <button
+          onClick={() => void handleGenerateSchema()}
+          disabled={generateSchema.isPending}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs rounded-md text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-raised)] transition-colors border border-dashed border-[var(--color-border-subtle)] hover:border-[var(--color-accent)] disabled:opacity-50"
+        >
+          <FileCode size={12} />
+          {generateSchema.isPending ? 'Generating…' : 'Generate Schema'}
         </button>
       </div>
 
@@ -320,8 +340,18 @@ function EditorPanel({
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-xl font-extrabold leading-tight">{page.title}</h1>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             {page.category && <CategoryBadge category={page.category} />}
+            {page.status && (
+              <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold rounded border bg-[var(--color-surface-raised)] border-[var(--color-border-subtle)] text-[var(--color-muted)]">
+                {page.status}
+              </span>
+            )}
+            {page.entity_type && (
+              <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold rounded border bg-[var(--color-surface-raised)] border-[var(--color-border-subtle)] text-[var(--color-muted)]">
+                {page.entity_type}
+              </span>
+            )}
             <p className="text-[10px] text-[var(--color-muted)] font-mono">
               {page.filePath.split('/').slice(-3).join('/')}
             </p>
@@ -419,9 +449,7 @@ export function WikiEditorPage() {
 
   async function handleCreate(title: string, category: string): Promise<string | null> {
     try {
-      const frontmatter = `---\ncategory: ${category}\n---\n\n`
-      const body = `${frontmatter}# ${title}\n`
-      const page = await createPage.mutateAsync({ title, body })
+      const page = await createPage.mutateAsync({ title, category })
       selectSlug(page.slug)
       notify('success', `Created "${page.title}"`)
       return page.slug

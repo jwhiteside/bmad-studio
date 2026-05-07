@@ -5,7 +5,11 @@ export type WikiPage = {
   body: string          // full markdown content
   filePath: string      // absolute path on disk
   lastModified: string  // ISO date string
-  category?: string     // derived from frontmatter `category:` or directory
+  category?: string     // derived from frontmatter `category:`
+  status?: string       // e.g. 'draft' | 'current' | 'archived'
+  tags?: string[]       // frontmatter `tags:`
+  entity_type?: string  // e.g. 'concept' | 'decision' | 'reference' | 'log'
+  last_reviewed?: string // ISO date string from frontmatter
 }
 
 export type WikiPageListItem = Omit<WikiPage, 'body'>
@@ -28,6 +32,9 @@ export const WIKI_CATEGORIES = [
 ] as const
 
 export type WikiCategory = (typeof WIKI_CATEGORIES)[number]
+
+export const WIKI_RESERVED_SLUGS = ['CLAUDE', 'index'] as const
+export type WikiReservedSlug = (typeof WIKI_RESERVED_SLUGS)[number]
 
 export type WikiImportPreviewItem = {
   relPath: string          // relative to _bmad-output/, e.g. "planning-artifacts/prd.md"

@@ -11,6 +11,7 @@ import type {
   WikiImportResult,
   WikiCategory,
 } from '@bmad-studio/shared'
+import { WIKI_CATEGORIES, WIKI_RESERVED_SLUGS } from '@bmad-studio/shared'
 import { NotFoundError, ValidationError } from '../core/errors.js'
 import { atomicWrite } from '../core/atomic-write.js'
 
@@ -39,17 +40,44 @@ function uniqueSlug(dir: string, base: string): string {
 // Page parser
 // ---------------------------------------------------------------------------
 
+function parseFrontmatter(body: string): Record<string, string> {
+  const result: Record<string, string> = {}
+  if (!body.startsWith('---')) return result
+  const end = body.indexOf('\n---', 3)
+  if (end === -1) return result
+  const block = body.slice(4, end)
+  for (const line of block.split('\n')) {
+    const colon = line.indexOf(':')
+    if (colon === -1) continue
+    const key = line.slice(0, colon).trim()
+    const val = line.slice(colon + 1).trim()
+    if (key && val) result[key] = val
+  }
+  return result
+}
+
+function parseTags(raw: string): string[] {
+  // Handle both inline "foo, bar" and YAML array bracket "[foo, bar]" forms
+  const cleaned = raw.replace(/^\[|\]$/g, '').trim()
+  if (!cleaned) return []
+  return cleaned
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)
+}
+
 function parsePage(filePath: string, slug: string): WikiPage {
   const body = fs.readFileSync(filePath, 'utf-8')
   const stat = fs.statSync(filePath)
   const lastModified = stat.mtime.toISOString()
 
-  // Extract category from frontmatter
-  let category: string | undefined
-  const categoryMatch = /^---[\s\S]*?^category:\s*(.+?)\s*$/m.exec(body)
-  if (categoryMatch) {
-    category = categoryMatch[1].trim()
-  }
+  const fm = parseFrontmatter(body)
+
+  const category = fm['category']
+  const status = fm['status']
+  const entity_type = fm['entity_type']
+  const last_reviewed = fm['last_reviewed']
+  const tags = fm['tags'] ? parseTags(fm['tags']) : undefined
 
   // Strip frontmatter for content parsing
   let content = body
@@ -91,12 +119,320 @@ function parsePage(filePath: string, slug: string): WikiPage {
     }
   }
 
-  return { slug, title, description, body, filePath, lastModified, category }
+  return { slug, title, description, body, filePath, lastModified, category, status, tags, entity_type, last_reviewed }
 }
 
 function toListItem(page: WikiPage): WikiPageListItem {
   const { body: _body, ...rest } = page
   return rest
+}
+
+// ---------------------------------------------------------------------------
+// Reserved slug guard
+// ---------------------------------------------------------------------------
+
+function isReservedSlug(slug: string): boolean {
+  return (WIKI_RESERVED_SLUGS as readonly string[]).includes(slug)
+}
+
+// ---------------------------------------------------------------------------
+// Category templates
+// ---------------------------------------------------------------------------
+
+const CATEGORY_TEMPLATES: Partial<Record<WikiCategory, string>> = {
+  Foundation: `---
+category: Foundation
+status: current
+entity_type: reference
+---
+
+# {{title}}
+
+## Purpose
+
+## Key Decisions
+
+## Scope
+`,
+  Planning: `---
+category: Planning
+status: draft
+entity_type: reference
+---
+
+# {{title}}
+
+## Goal
+
+## Epics / Stories
+
+## Open Questions
+`,
+  Research: `---
+category: Research
+status: current
+entity_type: reference
+---
+
+# {{title}}
+
+## Question / Hypothesis
+
+## Findings
+
+## Decision
+`,
+  Design: `---
+category: Design
+status: draft
+entity_type: reference
+---
+
+# {{title}}
+
+## Problem
+
+## Approach
+
+## Components
+`,
+  Specs: `---
+category: Specs
+status: current
+entity_type: reference
+---
+
+# {{title}}
+
+## Overview
+
+## API / Interface
+
+## Implementation Notes
+`,
+  Stories: `---
+category: Stories
+status: current
+entity_type: log
+---
+
+# {{title}}
+
+## Implemented
+
+## Decisions Made
+
+## Learnings
+`,
+  Retrospectives: `---
+category: Retrospectives
+status: current
+entity_type: log
+---
+
+# {{title}}
+
+## What Went Well
+
+## What Didn't
+
+## Actions
+`,
+  Brainstorming: `---
+category: Brainstorming
+status: draft
+entity_type: log
+---
+
+# {{title}}
+
+## Ideas
+
+## Themes
+`,
+  Changelogs: `---
+category: Changelogs
+status: current
+entity_type: log
+---
+
+# {{title}}
+
+## Changes
+
+## Impact
+`,
+}
+
+function buildPageBody(title: string, category?: string): string {
+  if (category && category in CATEGORY_TEMPLATES) {
+    const template = CATEGORY_TEMPLATES[category as WikiCategory]!
+    return template.replace('{{title}}', title)
+  }
+  return `# ${title}\n`
+}
+
+// ---------------------------------------------------------------------------
+// Index generation
+// ---------------------------------------------------------------------------
+
+async function generateIndex(dir: string): Promise<void> {
+  const pages = listPages(dir)
+  const grouped = new Map<string, WikiPageListItem[]>()
+
+  for (const cat of WIKI_CATEGORIES) {
+    const items = pages.filter((p) => p.category === cat)
+    if (items.length > 0) grouped.set(cat, items)
+  }
+  // Unknown / no category
+  const uncategorised = pages.filter((p) => !p.category || !WIKI_CATEGORIES.includes(p.category as WikiCategory))
+  if (uncategorised.length > 0) grouped.set('Uncategorised', uncategorised)
+
+  const timestamp = new Date().toISOString()
+  const lines: string[] = [
+    '---',
+    'title: Wiki Index',
+    `generated: ${timestamp}`,
+    '---',
+    '',
+    '# Wiki Index',
+    '',
+    '_Auto-generated. Do not edit directly — regenerate via Studio._',
+    '',
+  ]
+
+  for (const [cat, items] of grouped) {
+    lines.push(`## ${cat}`, '')
+    for (const p of items) {
+      const desc = p.description ? ` — ${p.description}` : ''
+      lines.push(`- [${p.title}](./${p.slug}.md)${desc}`)
+    }
+    lines.push('')
+  }
+
+  await atomicWrite(path.join(dir, 'index.md'), lines.join('\n'))
+}
+
+// ---------------------------------------------------------------------------
+// CLAUDE.md generation
+// ---------------------------------------------------------------------------
+
+async function generateClaudeMd(dir: string): Promise<string> {
+  const filePath = path.join(dir, 'CLAUDE.md')
+  const timestamp = new Date().toISOString()
+
+  const content = `---
+title: Wiki Schema — LLM Maintenance Instructions
+generated: ${timestamp}
+---
+
+# LLM Wiki — Schema & Maintenance Instructions
+
+This file defines the schema, conventions, and maintenance procedures for this wiki.
+An LLM agent reading this file can ingest sources, create pages, cross-reference entities,
+and keep the index current.
+
+## Frontmatter Schema
+
+Every wiki page must begin with YAML frontmatter:
+
+\`\`\`yaml
+---
+category: <required — one of: ${WIKI_CATEGORIES.join(' | ')}>
+status: <draft | current | archived>
+entity_type: <concept | decision | reference | log>
+tags: [optional, list, of, tags]
+last_reviewed: <YYYY-MM-DD>
+source: <optional — relative path in _bmad-output/ if this page was imported>
+---
+\`\`\`
+
+## Category Taxonomy
+
+| Category | Purpose | Typical entity_type |
+|---|---|---|
+| Foundation | PRD, Architecture — timeless reference docs | reference |
+| Planning | Epics, roadmaps, and backlog planning | reference |
+| Research | Spikes, investigations, and technical research | reference |
+| Design | UX specs and design directions | reference |
+| Specs | Per-feature tech specs and implementation notes | reference |
+| Stories | Per-story implementation artifacts | log |
+| Retrospectives | Retros, readiness reports, and change proposals | log |
+| Brainstorming | Brainstorming sessions and free-form notes | log |
+| Changelogs | Cycle changelogs and release notes | log |
+
+## Page Structure Conventions
+
+1. First heading (\`#\`) is the page title.
+2. First paragraph after the title is the description (used in \`index.md\`).
+3. Use \`##\` for major sections, \`###\` for sub-sections.
+4. Cross-reference related pages with relative links: \`[Page Title](./page-slug.md)\`.
+5. Mark deprecated content with a \`> **Archived:** reason\` blockquote.
+
+## Reserved Files
+
+The following filenames are reserved and managed by Studio — do not create or delete them manually:
+
+- \`CLAUDE.md\` — this schema file (regenerate via Studio)
+- \`index.md\` — auto-maintained navigation index (regenerated on every page write/delete)
+
+## LLM Agent Maintenance Procedures
+
+### Ingest
+
+When a new source file arrives in \`raw/\`:
+
+1. Read the source, strip BMAD workflow frontmatter.
+2. Determine category from file path or content.
+3. Create or update the corresponding wiki page with correct frontmatter.
+4. Add a \`source:\` field referencing the original path.
+5. \`index.md\` updates automatically via Studio after every write.
+
+### Update
+
+When a source page changes:
+
+1. Locate the wiki page with the matching \`source:\` field.
+2. Merge new content, preserving any manual annotations.
+3. Update \`last_reviewed\` to today's date.
+
+### Cross-Reference
+
+When writing a new page:
+
+1. Search existing pages for related entities.
+2. Add relative markdown links in a \`## Related\` section at the bottom.
+
+### index.md
+
+\`index.md\` is auto-maintained by Studio on every write/delete.
+Do not hand-edit it. To force regeneration: \`POST /api/wiki/generate-index\`.
+
+### log.md
+
+Append one line per ingest or update operation:
+
+\`\`\`
+YYYY-MM-DD HH:MM — <action>: <page-slug> (source: <relPath>)
+\`\`\`
+
+## Studio API Reference
+
+| Method | Path | Description |
+|---|---|---|
+| GET | /api/wiki | List all pages with metadata |
+| GET | /api/wiki/:slug | Get a single page with body |
+| POST | /api/wiki | Create a new page |
+| PUT | /api/wiki/:slug | Update a page body |
+| DELETE | /api/wiki/:slug | Delete a page |
+| POST | /api/wiki/generate-claude-md | Regenerate this file |
+| POST | /api/wiki/generate-index | Regenerate index.md |
+| GET | /api/wiki/import/preview | Preview importable artifacts |
+| POST | /api/wiki/import | Import selected artifacts |
+`
+
+  await atomicWrite(filePath, content)
+  return filePath
 }
 
 // ---------------------------------------------------------------------------
@@ -127,12 +463,10 @@ function categorizeArtifact(relPath: string): { category: WikiCategory; skip: bo
     if (name.startsWith('implementation-readiness-') || name.startsWith('sprint-change-')) {
       return { category: 'Retrospectives', skip: false }
     }
-    // generic planning artifact
     return { category: 'Planning', skip: false }
   }
 
   if (dir === 'implementation-artifacts') {
-    // skip non-markdown supplementary files
     if (name.endsWith('.yaml') || name.endsWith('.txt')) return { category: 'Stories', skip: true }
     if (/^\d/.test(name)) return { category: 'Stories', skip: false }
     if (name.includes('retro')) return { category: 'Retrospectives', skip: false }
@@ -144,7 +478,6 @@ function categorizeArtifact(relPath: string): { category: WikiCategory; skip: bo
 }
 
 function extractTitleFromContent(content: string, fallback: string): string {
-  // Strip BMAD frontmatter before looking for heading
   let body = content
   if (content.startsWith('---')) {
     const end = content.indexOf('\n---', 3)
@@ -169,7 +502,6 @@ function stripBmadFrontmatter(content: string): string {
 }
 
 function buildImportedSourceSet(wikiDir: string): Set<string> {
-  // Find all wiki pages that have a `source:` frontmatter field — these are already imported
   const sources = new Set<string>()
   if (!fs.existsSync(wikiDir)) return sources
   for (const file of fs.readdirSync(wikiDir)) {
@@ -215,6 +547,23 @@ function scanBmadOutput(outputDir: string, importedSources: Set<string>): WikiIm
 }
 
 // ---------------------------------------------------------------------------
+// List pages (excludes reserved slugs)
+// ---------------------------------------------------------------------------
+
+function listPages(dir: string): WikiPageListItem[] {
+  if (!fs.existsSync(dir)) return []
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.md') && !isReservedSlug(f.slice(0, -3)))
+    .sort()
+    .map((f) => {
+      const slug = f.slice(0, -3)
+      const filePath = path.join(dir, f)
+      return toListItem(parsePage(filePath, slug))
+    })
+}
+
+// ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
 
@@ -237,18 +586,9 @@ export async function wikiPlugin(app: FastifyInstance) {
     return path.join(app.fileStore.projectRoot, BMAD_OUTPUT_SUBDIR)
   }
 
-  function listPages(dir: string): WikiPageListItem[] {
-    if (!fs.existsSync(dir)) return []
-    return fs
-      .readdirSync(dir)
-      .filter((f) => f.endsWith('.md'))
-      .sort()
-      .map((f) => {
-        const slug = f.slice(0, -3)
-        const filePath = path.join(dir, f)
-        return toListItem(parsePage(filePath, slug))
-      })
-  }
+  // ---------------------------------------------------------------------------
+  // Core CRUD routes — non-parameterised first, then :slug
+  // ---------------------------------------------------------------------------
 
   // GET /api/wiki
   app.get('/api/wiki', async (): Promise<WikiIndex> => {
@@ -261,19 +601,9 @@ export async function wikiPlugin(app: FastifyInstance) {
     return { pages, categories: Array.from(categorySet).sort() }
   })
 
-  // GET /api/wiki/:slug
-  app.get<{ Params: { slug: string } }>('/api/wiki/:slug', async (request): Promise<WikiPage> => {
-    const { slug } = request.params
-    const filePath = path.join(wikiDir(), `${slug}.md`)
-    if (!fs.existsSync(filePath)) {
-      throw new NotFoundError(`Wiki page not found: ${slug}`)
-    }
-    return parsePage(filePath, slug)
-  })
-
   // POST /api/wiki
-  app.post<{ Body: { title: string; body?: string } }>('/api/wiki', async (request): Promise<WikiPage> => {
-    const { title, body } = request.body ?? {}
+  app.post<{ Body: { title: string; body?: string; category?: string } }>('/api/wiki', async (request): Promise<WikiPage> => {
+    const { title, body, category } = request.body ?? {}
     if (typeof title !== 'string' || title.trim() === '') {
       throw new ValidationError('title is required')
     }
@@ -283,54 +613,41 @@ export async function wikiPlugin(app: FastifyInstance) {
     const slug = uniqueSlug(dir, base)
     const filePath = path.join(dir, `${slug}.md`)
 
-    const content = body ?? `# ${title}\n`
+    const content = body ?? buildPageBody(title.trim(), category)
     await atomicWrite(filePath, content)
 
+    generateIndex(dir).catch((err) => app.log.error(err, 'index generation failed'))
     return parsePage(filePath, slug)
   })
 
-  // PUT /api/wiki/:slug
-  app.put<{ Params: { slug: string }; Body: { body: string } }>(
-    '/api/wiki/:slug',
-    async (request): Promise<WikiPage> => {
-      const { slug } = request.params
-      const { body } = request.body ?? {}
-      if (typeof body !== 'string') {
-        throw new ValidationError('body must be a string')
-      }
+  // ---------------------------------------------------------------------------
+  // Generate routes — must be before /:slug to avoid slug capture
+  // ---------------------------------------------------------------------------
 
-      const dir = ensureWikiDir()
-      const filePath = path.join(dir, `${slug}.md`)
-      if (!fs.existsSync(filePath)) {
-        throw new NotFoundError(`Wiki page not found: ${slug}`)
-      }
+  // POST /api/wiki/generate-claude-md
+  app.post('/api/wiki/generate-claude-md', async (): Promise<{ ok: true; filePath: string }> => {
+    const dir = ensureWikiDir()
+    const filePath = await generateClaudeMd(dir)
+    return { ok: true, filePath }
+  })
 
-      await atomicWrite(filePath, body)
-      return parsePage(filePath, slug)
-    },
-  )
-
-  // DELETE /api/wiki/:slug
-  app.delete<{ Params: { slug: string } }>('/api/wiki/:slug', async (request): Promise<{ ok: true }> => {
-    const { slug } = request.params
-    const filePath = path.join(wikiDir(), `${slug}.md`)
-    if (!fs.existsSync(filePath)) {
-      throw new NotFoundError(`Wiki page not found: ${slug}`)
-    }
-    fs.unlinkSync(filePath)
-    return { ok: true }
+  // POST /api/wiki/generate-index
+  app.post('/api/wiki/generate-index', async (): Promise<{ ok: true; filePath: string; pageCount: number }> => {
+    const dir = ensureWikiDir()
+    await generateIndex(dir)
+    const pageCount = listPages(dir).length
+    return { ok: true, filePath: path.join(dir, 'index.md'), pageCount }
   })
 
   // ---------------------------------------------------------------------------
-  // Import routes
+  // Import routes — also before /:slug
   // ---------------------------------------------------------------------------
 
-  // GET /api/wiki/import/preview — scan _bmad-output and return candidate files
+  // GET /api/wiki/import/preview
   app.get('/api/wiki/import/preview', async (): Promise<{ items: WikiImportPreviewItem[] }> => {
     const dir = ensureWikiDir()
     const importedSources = buildImportedSourceSet(dir)
     const items = scanBmadOutput(outputDir(), importedSources)
-    // Sort: Foundation first, then by category alpha, then by relPath
     const ORDER: Record<string, number> = {
       Foundation: 0, Planning: 1, Research: 2, Design: 3,
       Specs: 4, Stories: 5, Retrospectives: 6, Brainstorming: 7, Changelogs: 8,
@@ -344,7 +661,7 @@ export async function wikiPlugin(app: FastifyInstance) {
     return { items }
   })
 
-  // POST /api/wiki/import — import selected files by relPath
+  // POST /api/wiki/import
   app.post<{ Body: { relPaths: string[] } }>(
     '/api/wiki/import',
     async (request): Promise<WikiImportResult> => {
@@ -360,30 +677,17 @@ export async function wikiPlugin(app: FastifyInstance) {
       let skipped = 0
 
       for (const relPath of relPaths) {
-        // Skip already imported
-        if (importedSources.has(relPath)) {
-          skipped++
-          continue
-        }
-
+        if (importedSources.has(relPath)) { skipped++; continue }
         const { category, skip } = categorizeArtifact(relPath)
-        if (skip) {
-          skipped++
-          continue
-        }
-
+        if (skip) { skipped++; continue }
         const srcPath = path.join(outputDir(), relPath)
-        if (!fs.existsSync(srcPath)) {
-          skipped++
-          continue
-        }
+        if (!fs.existsSync(srcPath)) { skipped++; continue }
 
         const rawContent = fs.readFileSync(srcPath, 'utf-8')
         const fallback = cleanFilename(path.basename(relPath))
         const title = extractTitleFromContent(rawContent, fallback)
         const strippedBody = stripBmadFrontmatter(rawContent)
 
-        // Build wiki page body with metadata frontmatter
         const wikiBody = `---\ncategory: ${category}\nsource: ${relPath}\n---\n\n${strippedBody}`
 
         const base = titleToSlug(title) || titleToSlug(fallback) || 'untitled'
@@ -396,7 +700,72 @@ export async function wikiPlugin(app: FastifyInstance) {
         imported++
       }
 
+      if (imported > 0) {
+        generateIndex(dir).catch((err) => app.log.error(err, 'index generation failed'))
+      }
+
       return { imported, skipped, pages }
     },
   )
+
+  // ---------------------------------------------------------------------------
+  // Parameterised :slug routes — last
+  // ---------------------------------------------------------------------------
+
+  // GET /api/wiki/:slug
+  app.get<{ Params: { slug: string } }>('/api/wiki/:slug', async (request): Promise<WikiPage> => {
+    const { slug } = request.params
+    if (isReservedSlug(slug)) {
+      throw new ValidationError(`'${slug}' is a reserved wiki slug`)
+    }
+    const filePath = path.join(wikiDir(), `${slug}.md`)
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundError(`Wiki page not found: ${slug}`)
+    }
+    return parsePage(filePath, slug)
+  })
+
+  // PUT /api/wiki/:slug
+  app.put<{ Params: { slug: string }; Body: { body: string } }>(
+    '/api/wiki/:slug',
+    async (request): Promise<WikiPage> => {
+      const { slug } = request.params
+      const { body } = request.body ?? {}
+      if (isReservedSlug(slug)) {
+        throw new ValidationError(`'${slug}' is a reserved wiki slug`)
+      }
+      if (typeof body !== 'string') {
+        throw new ValidationError('body must be a string')
+      }
+
+      const dir = ensureWikiDir()
+      const filePath = path.join(dir, `${slug}.md`)
+      if (!fs.existsSync(filePath)) {
+        throw new NotFoundError(`Wiki page not found: ${slug}`)
+      }
+
+      await atomicWrite(filePath, body)
+      const page = parsePage(filePath, slug)
+
+      generateIndex(dir).catch((err) => app.log.error(err, 'index generation failed'))
+      return page
+    },
+  )
+
+  // DELETE /api/wiki/:slug
+  app.delete<{ Params: { slug: string } }>('/api/wiki/:slug', async (request): Promise<{ ok: true }> => {
+    const { slug } = request.params
+    if (isReservedSlug(slug)) {
+      throw new ValidationError(`'${slug}' is a reserved wiki slug`)
+    }
+    const dir = wikiDir()
+    const filePath = path.join(dir, `${slug}.md`)
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundError(`Wiki page not found: ${slug}`)
+    }
+    fs.unlinkSync(filePath)
+
+    generateIndex(dir).catch((err) => app.log.error(err, 'index generation failed'))
+    return { ok: true }
+  })
 }
