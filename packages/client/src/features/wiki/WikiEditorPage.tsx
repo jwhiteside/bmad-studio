@@ -13,7 +13,7 @@ import {
   useGenerateClaudeMd,
 } from './use-wiki.js'
 import { WikiImportDialog } from './WikiImportDialog.js'
-import { CodeMirrorEditor } from '../../shared/markdown-editor/CodeMirrorEditor.js'
+import { MarkdownEditor } from '../../shared/markdown-editor/MarkdownEditor.js'
 import { useNotifications } from '../../layout/NotificationProvider.js'
 
 // ---------------------------------------------------------------------------
@@ -377,11 +377,13 @@ function EditorPanel({
         </div>
       </div>
       <div className="flex-1 rounded-lg border border-[var(--color-border-subtle)] overflow-hidden">
-        <CodeMirrorEditor
+        <MarkdownEditor
           content={content}
+          filePath={`${page.slug}.md`}
           onChange={setContent}
           onSave={() => void handleSave()}
-          language="markdown"
+          defaultMode="preview"
+          modes={['preview', 'edit']}
         />
       </div>
     </div>

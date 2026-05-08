@@ -23,6 +23,7 @@ type MarkdownEditorProps = {
   readOnly?: boolean
   defaultMode?: EditorMode
   hideModeTabs?: boolean
+  modes?: EditorMode[]
 }
 
 function MarkdownPreview({ content }: { content: string }) {
@@ -51,8 +52,10 @@ export function MarkdownEditor({
   readOnly = false,
   defaultMode,
   hideModeTabs = false,
+  modes,
 }: MarkdownEditorProps) {
-  const [mode, setMode] = useState<EditorMode>(defaultMode ?? 'edit')
+  const availableModes = modes ?? (['edit', 'preview', 'split'] as const)
+  const [mode, setMode] = useState<EditorMode>(defaultMode ?? availableModes[0])
   const theme = useThemeStore((s) => s.theme)
   const language: EditorLanguage = getLanguageForFile(filePath)
   const isMarkdown = language === 'markdown'
@@ -76,7 +79,7 @@ export function MarkdownEditor({
         </span>
         {!hideModeTabs && (
           <div className="flex gap-0.5 shrink-0">
-            {(['edit', 'preview', 'split'] as const).map((m) => (
+            {availableModes.map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
