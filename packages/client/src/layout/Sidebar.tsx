@@ -18,6 +18,7 @@ import {
   Loader2,
   FileText,
   BookOpen,
+  AlertTriangle,
 } from 'lucide-react'
 
 import type { WebSocketEvent } from '@bmad-studio/shared'
@@ -26,7 +27,7 @@ import { useThemeStore } from '../stores/ui-store.js'
 import { useWebSocket } from '../hooks/use-websocket.js'
 import { useAppTitle } from '../hooks/use-app-title.js'
 import { useProjectMode } from '../lib/use-project-mode.js'
-import { DriftBadge } from '../features/drift/DriftBadge.js'
+import { useDrift } from '../features/drift/use-drift.js'
 
 type ProjectEntry = { path: string; name: string; lastOpened: string }
 
@@ -73,7 +74,7 @@ const settingsGroup: NavGroup = {
   icon: Settings,
   items: [
     { to: '/project-context', label: 'Project Context', icon: FileText },
-    { to: '/settings', label: 'Preferences', icon: Settings },
+    { to: '/settings', label: 'Project Preferences', icon: Settings },
     { to: '/modules', label: 'Modules', icon: Package, badgeKey: 'modules' },
     { to: '/connections', label: 'IDE Connections', icon: Plug, badgeKey: 'connections' },
   ],
@@ -85,12 +86,14 @@ function NavItemComponent({
   icon: Icon,
   badge,
   indent = false,
+  driftIndicator = false,
 }: {
   to: string
   label: string
   icon: typeof Users
   badge?: number
   indent?: boolean
+  driftIndicator?: boolean
 }) {
   return (
     <NavLink
@@ -104,6 +107,7 @@ function NavItemComponent({
         }`
       }
     >
+      {driftIndicator && <AlertTriangle size={13} className="text-[var(--color-warning)] shrink-0" />}
       <Icon size={indent ? 15 : 18} />
       <span className="flex-1">{label}</span>
       {badge !== undefined && badge > 0 && (
@@ -118,9 +122,11 @@ function NavItemComponent({
 function NavGroupComponent({
   group,
   badgeCounts,
+  driftItems = new Set(),
 }: {
   group: NavGroup
   badgeCounts: Record<string, number>
+  driftItems?: Set<string>
 }) {
   const [expanded, setExpanded] = useState(true)
   const Icon = group.icon
@@ -145,6 +151,7 @@ function NavGroupComponent({
               icon={item.icon}
               badge={item.badgeKey ? badgeCounts[item.badgeKey] : undefined}
               indent
+              driftIndicator={driftItems.has(item.to)}
             />
           ))}
         </div>
@@ -247,6 +254,9 @@ export function Sidebar() {
     }
   }
 
+  const { count: driftCount } = useDrift()
+  const driftItems = driftCount > 0 ? new Set(['/skills']) : new Set<string>()
+
   const appTitle = useAppTitle()
 
   function handleToggleTheme() {
@@ -296,7 +306,6 @@ export function Sidebar() {
             )}
           </div>
         )}
-        <DriftBadge />
       </div>
 
       <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto pt-1" aria-label="Main navigation">
@@ -314,7 +323,7 @@ export function Sidebar() {
         <NavGroupComponent group={outputsGroup} badgeCounts={badgeCounts} />
 
         <div className="my-2 border-t border-[var(--color-border-subtle)]" />
-        <NavGroupComponent group={toolkitGroup} badgeCounts={badgeCounts} />
+        <NavGroupComponent group={toolkitGroup} badgeCounts={badgeCounts} driftItems={driftItems} />
 
         <div className="my-2 border-t border-[var(--color-border-subtle)]" />
         <NavGroupComponent group={settingsGroup} badgeCounts={badgeCounts} />

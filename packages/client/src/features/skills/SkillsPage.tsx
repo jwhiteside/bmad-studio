@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
-import { Zap, Users, GitBranch, Edit } from 'lucide-react'
+import { Zap, Users, GitBranch, Edit, AlertTriangle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { useCompiledSkills } from './use-skills.js'
+import { useDrift } from '../drift/use-drift.js'
 import { EmptyState } from '../../shared/EmptyState.js'
 import { EntityPageHeader } from '../../shared/EntityPageHeader.js'
 import { SkeletonList } from '../../shared/Skeleton.js'
@@ -11,9 +12,15 @@ type TypeFilter = 'all' | 'agent' | 'workflow'
 
 export function SkillsPage() {
   const { data: items, isLoading } = useCompiledSkills()
+  const { count: driftCount, files: driftFiles } = useDrift()
   const [search, setSearch] = useState('')
   const [activeModule, setActiveModule] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+
+  // Match drifted file paths to skill IDs by basename (e.g. "_bmad/agents/foo.md" → "foo")
+  const driftedIds = useMemo(() => {
+    return new Set(driftFiles.map((f) => f.path.split('/').pop()?.replace(/\.[^.]+$/, '') ?? ''))
+  }, [driftFiles])
 
   const modules = useMemo(() => {
     if (!items) return []
@@ -130,11 +137,31 @@ export function SkillsPage() {
         }
       />
 
+      {driftCount > 0 && (
+        <div className="mb-4 flex items-center gap-3 p-3 rounded-lg bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30">
+          <AlertTriangle size={16} className="text-[var(--color-warning)] shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-[var(--color-warning)]">
+              {driftCount} file{driftCount !== 1 ? 's' : ''} drifted from installer baseline
+            </p>
+            <p className="text-xs text-[var(--color-muted)] mt-0.5">
+              {driftFiles.map((f) => f.path.split('/').pop()).join(', ')}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3">
-        {filtered.map((item) => (
+        {filtered.map((item) => {
+          const isDrifted = driftedIds.has(item.id)
+          return (
           <div
             key={`${item.type}:${item.id}`}
-            className="w-full text-left p-4 rounded-lg flex items-center justify-between bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]"
+            className={`w-full text-left p-4 rounded-lg flex items-center justify-between border ${
+              isDrifted
+                ? 'bg-[var(--color-warning)]/10 border-[var(--color-warning)]/40'
+                : 'bg-[var(--color-surface-raised)] border-[var(--color-border-subtle)]'
+            }`}
           >
             <div className="flex items-center gap-3">
               {item.type === 'agent' ? (
@@ -159,6 +186,12 @@ export function SkillsPage() {
                       {item.module}
                     </span>
                   )}
+                  {isDrifted && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--color-warning)]/20 text-[var(--color-warning)] uppercase tracking-wide">
+                      <AlertTriangle size={10} />
+                      Drifted
+                    </span>
+                  )}
                 </div>
                 {item.description && (
                   <p className="text-xs text-[var(--color-muted)] truncate max-w-md mt-0.5">
@@ -175,7 +208,8 @@ export function SkillsPage() {
               Edit
             </Link>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {filtered.length === 0 && items.length > 0 && (

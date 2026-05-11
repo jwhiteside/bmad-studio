@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Zap } from 'lucide-react'
 
 import { useThemeStore } from '../../stores/ui-store.js'
 import { toggleTheme } from '../../lib/theme.js'
 import { useNotifications } from '../../layout/NotificationProvider.js'
+import { useProjectMode } from '../../lib/use-project-mode.js'
 
 type Settings = {
   port: number
@@ -15,6 +17,7 @@ export function SettingsPage() {
   const theme = useThemeStore((s) => s.theme)
   const setThemeState = useThemeStore((s) => s.setTheme)
   const { notify } = useNotifications()
+  const { isV65, isLoading: modeLoading } = useProjectMode()
   const [, setSettings] = useState<Settings>({ port: 4040, theme: 'dark' })
   const [loading, setLoading] = useState(true)
   const [port, setPort] = useState('4040')
@@ -134,15 +137,15 @@ export function SettingsPage() {
   if (loading)
     return (
       <div>
-        <h1 className="text-2xl font-extrabold mb-8">Settings</h1>
+        <h1 className="text-2xl font-extrabold mb-8">Project Preferences</h1>
         <div className="h-32 rounded-lg bg-[var(--color-surface-raised)] animate-pulse" />
       </div>
     )
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-extrabold">Settings</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-extrabold">Project Preferences</h1>
         <button
           onClick={handleSave}
           disabled={!dirty || saving}
@@ -151,6 +154,20 @@ export function SettingsPage() {
           {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
+
+      {!modeLoading && (
+        <div className="mb-6 flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 rounded-md border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 px-3 py-2">
+            <Zap size={12} className="text-[var(--color-accent)]" />
+            <span className="text-xs font-bold text-[var(--color-accent)] uppercase tracking-wider">
+              {isV65 ? 'BMAD v6.5' : 'BMAD v6'}
+            </span>
+            <span className="text-xs text-[var(--color-muted)]">
+              — {isV65 ? 'Entity-based configuration active' : 'Classic configuration'}
+            </span>
+          </div>
+        </div>
+      )}
 
       <section className="mb-8">
         <h2 className="text-lg font-bold mb-4">Studio</h2>
