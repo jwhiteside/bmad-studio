@@ -63,11 +63,19 @@ export class FileStore {
   async initialize() {
     const cacheFile = path.join(this.studioDir, 'cache', 'entities.json')
 
-    // Try loading from cache
+    // Try loading from cache — but only if it was built for this exact projectRoot.
+    // A stale cache (different projectRoot, or structure change) causes dead filePaths
+    // which silently produce "Could not load step instructions" errors.
     if (fs.existsSync(cacheFile)) {
       try {
-        const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf-8')) as EntityIndex
-        this.index = cached
+        const raw = JSON.parse(fs.readFileSync(cacheFile, 'utf-8')) as EntityIndex & { _projectRoot?: string }
+        if (raw._projectRoot === this.projectRoot) {
+          const { _projectRoot: _, ...rest } = raw
+          this.index = rest as EntityIndex
+        } else {
+          // Different project root — rebuild from scratch
+          this.index = buildIndex(this.projectRoot)
+        }
       } catch {
         // Cache corrupt — rebuild
         this.index = buildIndex(this.projectRoot)
@@ -87,7 +95,7 @@ export class FileStore {
     }
     fs.writeFileSync(
       path.join(cacheDir, 'entities.json'),
-      JSON.stringify(this.index, null, 2),
+      JSON.stringify({ _projectRoot: this.projectRoot, ...this.index }, null, 2),
       'utf-8',
     )
   }
