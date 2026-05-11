@@ -7,6 +7,7 @@ import type { WorkflowListItem, WorkflowType } from '@bmad-studio/shared'
 
 import { useWorkflows, useWorkflowStatuses, useWorkflowStatusLiveRefresh } from './use-workflows.js'
 import type { WorkflowStatusResult } from './use-workflows.js'
+import { useDrift } from '../drift/use-drift.js'
 import { EmptyState } from '../../shared/EmptyState.js'
 import { EntityPageHeader } from '../../shared/EntityPageHeader.js'
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js'
@@ -164,6 +165,7 @@ function StatusDot({ status }: { status: WorkflowStatusResult['status'] | undefi
 export function WorkflowsPage() {
   const navigate = useNavigate()
   const { data: workflows, isLoading, refetch } = useWorkflows()
+  const { count: driftCount, files: driftFiles } = useDrift()
   const [showCreate, setShowCreate] = useState(false)
   const [showTypeGuide, setShowTypeGuide] = useState(false)
   const [activeModule, setActiveModule] = useState<string>('all')
@@ -195,6 +197,11 @@ export function WorkflowsPage() {
   }, [workflows])
 
   const hasAnyHooks = useMemo(() => workflows?.some((wf) => (wf.hookCount ?? 0) > 0) ?? false, [workflows])
+
+  const driftedIds = useMemo(
+    () => new Set(driftFiles.map((f) => f.path.split('/').pop()?.replace(/\.[^.]+$/, '') ?? '')),
+    [driftFiles],
+  )
 
   const filtered = useMemo(() => {
     if (!workflows) return []
@@ -339,6 +346,20 @@ export function WorkflowsPage() {
           </div>
         )}
 
+        {driftCount > 0 && filtered.some((wf) => driftedIds.has(wf.id)) && (
+          <div className="mb-4 flex items-center gap-3 p-3 rounded-lg bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30">
+            <AlertTriangle size={16} className="text-[var(--color-warning)] shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-[var(--color-warning)]">
+                {filtered.filter((wf) => driftedIds.has(wf.id)).length} workflow{filtered.filter((wf) => driftedIds.has(wf.id)).length !== 1 ? 's' : ''} drifted from installer baseline
+              </p>
+              <p className="text-xs text-[var(--color-muted)] mt-0.5">
+                {driftFiles.map((f) => f.path.split('/').pop()).join(', ')}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-6">
             {phaseGroups.map(([phase, wfs]) => (
               <div key={phase}>
@@ -352,18 +373,31 @@ export function WorkflowsPage() {
                     const isBlocked = wfStatus?.status === 'blocked'
                     const isBlockedExpanded = expandedBlockedId === wf.id
                     const blockedInputs = wfStatus?.inputs.filter((i: WorkflowStatusResult['inputs'][number]) => i.required && i.status === 'missing') ?? []
+                    const isDrifted = driftedIds.has(wf.id)
 
                     return (
                     <div key={wf.id}>
-                      <div className="rounded-lg border transition-colors bg-[var(--color-surface-raised)] border-[var(--color-border-subtle)] hover:border-[var(--color-accent)]">
+                      <div className={`rounded-lg border transition-colors ${
+                        isDrifted
+                          ? 'bg-[var(--color-warning)]/10 border-[var(--color-warning)]/40 hover:border-[var(--color-warning)]'
+                          : 'bg-[var(--color-surface-raised)] border-[var(--color-border-subtle)] hover:border-[var(--color-accent)]'
+                      }`}>
                         <button
                           onClick={() => navigate(`/workflows/${wf.id}`)}
                           className="w-full flex items-center justify-between p-4 cursor-pointer text-left"
                         >
                           <div className="flex items-center gap-3">
-                            <GitBranch size={18} className="text-[var(--color-muted)]" />
+                            <GitBranch size={18} className={isDrifted ? 'text-[var(--color-warning)]' : 'text-[var(--color-muted)]'} />
                             <div>
-                              <p className="text-sm font-bold">{wf.name}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold">{wf.name}</p>
+                                {isDrifted && (
+                                  <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--color-warning)]/20 text-[var(--color-warning)] uppercase tracking-wide">
+                                    <AlertTriangle size={9} />
+                                    Drifted
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-[var(--color-muted)] truncate max-w-md">
                                 {wf.description}
                               </p>
