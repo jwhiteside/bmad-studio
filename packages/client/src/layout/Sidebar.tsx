@@ -107,8 +107,15 @@ function NavItemComponent({
         }`
       }
     >
-      {driftIndicator && <AlertTriangle size={13} className="text-[var(--color-warning)] shrink-0" />}
-      <Icon size={indent ? 15 : 18} />
+      <span className="relative shrink-0">
+        {driftIndicator && (
+          <AlertTriangle
+            size={11}
+            className="absolute right-full mr-1 top-1/2 -translate-y-1/2 text-[var(--color-warning)]"
+          />
+        )}
+        <Icon size={indent ? 15 : 18} />
+      </span>
       <span className="flex-1">{label}</span>
       {badge !== undefined && badge > 0 && (
         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
