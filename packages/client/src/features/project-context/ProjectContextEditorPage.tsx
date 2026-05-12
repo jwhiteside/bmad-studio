@@ -516,6 +516,17 @@ export function ProjectContextEditorPage() {
     debounceRef.current = setTimeout(() => runLint(newRaw), 300)
   }
 
+  function handleCustomSectionBodyChange(key: string, body: string) {
+    const next = customSectionBodies.map((cs) =>
+      cs.heading.toLowerCase().replace(/\s+/g, '-') === key ? { ...cs, body } : cs,
+    )
+    setCustomSectionBodies(next)
+    const newRaw = buildRawFromStructured(structuredBodies, next)
+    setRaw(newRaw)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => runLint(newRaw), 300)
+  }
+
   function handleViewModeChange(mode: ViewMode) {
     if (viewMode === 'structured' && mode === 'raw') {
       // structured → raw: raw is already synced
@@ -625,6 +636,10 @@ export function ProjectContextEditorPage() {
   const activeSection = parsedDoc.sections.find((s) => s.key === activeSectionKey)
   const activeDef = SECTION_DEF_MAP.get(activeSectionKey)
   const activeBody = structuredBodies.get(activeSectionKey)?.body ?? ''
+  const activeCustomSection = parsedDoc.customSections.find((cs) => cs.key === activeSectionKey)
+  const isCustomSection = !activeSection && !!activeCustomSection
+  const activeCustomBody =
+    customSectionBodies.find((cs) => cs.heading.toLowerCase().replace(/\s+/g, '-') === activeSectionKey)?.body ?? ''
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)]">
@@ -721,7 +736,12 @@ export function ProjectContextEditorPage() {
                 {parsedDoc.customSections.map((cs) => (
                   <button
                     key={cs.key}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-raised)]/50 transition-colors cursor-pointer"
+                    onClick={() => setActiveSectionKey(cs.key)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors cursor-pointer ${
+                      activeSectionKey === cs.key
+                        ? 'bg-[var(--color-surface-raised)] text-[var(--color-text)] font-bold'
+                        : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-raised)]/50'
+                    }`}
                   >
                     <CheckCircle2 size={13} className="text-[var(--color-success)]" />
                     <span className="truncate">{cs.heading}</span>
@@ -741,38 +761,48 @@ export function ProjectContextEditorPage() {
                 filePath="project-context.md"
                 onChange={handleRawChange}
                 onSave={handleSaveClick}
+                defaultMode="preview"
+                modes={['preview', 'edit']}
               />
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               {/* Section heading + help */}
               <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] shrink-0">
-                {activeSection?.present ? (
+                {isCustomSection ? (
+                  <CheckCircle2 size={15} className="text-[var(--color-success)]" />
+                ) : activeSection?.present ? (
                   <CheckCircle2 size={15} className="text-[var(--color-success)]" />
                 ) : (
                   <Circle size={15} className="text-[var(--color-border-subtle)]" />
                 )}
                 <h2 className="text-sm font-bold flex-1">
-                  {activeDef?.heading ?? activeSectionKey}
+                  {isCustomSection ? activeCustomSection?.heading : (activeDef?.heading ?? activeSectionKey)}
                 </h2>
-                <button
-                  onClick={() => setHelpFor(activeSectionKey)}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
-                  title="What is this section for?"
-                >
-                  <HelpCircle size={13} />
-                  What is this?
-                </button>
+                {!isCustomSection && (
+                  <button
+                    onClick={() => setHelpFor(activeSectionKey)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
+                    title="What is this section for?"
+                  >
+                    <HelpCircle size={13} />
+                    What is this?
+                  </button>
+                )}
               </div>
               <div className="flex-1 p-4 overflow-y-auto">
                 <textarea
-                  value={activeBody}
-                  onChange={(e) => handleSectionBodyChange(activeSectionKey, e.target.value)}
-                  placeholder={`Write the ${activeDef?.heading ?? activeSectionKey} content here using Markdown…`}
+                  value={isCustomSection ? activeCustomBody : activeBody}
+                  onChange={(e) =>
+                    isCustomSection
+                      ? handleCustomSectionBodyChange(activeSectionKey, e.target.value)
+                      : handleSectionBodyChange(activeSectionKey, e.target.value)
+                  }
+                  placeholder={`Write the ${isCustomSection ? activeCustomSection?.heading : (activeDef?.heading ?? activeSectionKey)} content here using Markdown…`}
                   className="w-full min-h-full p-3 text-sm font-mono bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-md text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-accent)] resize-none"
                   style={{ minHeight: '300px' }}
                 />
-                {activeDef && !activeSection?.present && (
+                {!isCustomSection && activeDef && !activeSection?.present && (
                   <div className="mt-3 p-3 rounded-md bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]">
                     <p className="text-xs text-[var(--color-muted)] mb-2">{activeDef.description}</p>
                     <button

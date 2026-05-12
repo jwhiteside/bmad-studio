@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-18
-last_updated: 2026-05-02  # Cycle 6 — E37 in-progress (entity classification via customize.toml)
+last_updated: 2026-05-07  # E48 wiki CLAUDE.md schema — story ready-for-dev
 project: BMAD Studio
 project_key: NOKEY
 tracking_system: file-system
@@ -398,3 +398,11 @@ development_status:
   41-2-home-page-bmad-mode-badge-and-phase-timeline: backlog
   41-3-navigation-restructure: backlog
   epic-41-retrospective: optional
+
+  # ─── Cycle 7: Wiki Schema (May 7 2026) ───
+  # Epic: _bmad-output/planning-artifacts/ (no separate epics file — self-contained story)
+
+  # Epic 48: Wiki CLAUDE.md Schema
+  epic-48: in-progress
+  48-1-wiki-claude-md-schema: review
+  epic-48-retrospective: optional
