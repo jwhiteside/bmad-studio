@@ -11,6 +11,9 @@ dist/
 # BMAD project directory — installed via `npx bmad-method-install`, not committed
 _bmad/
 
+# BMAD v6.5 reference dump (local-only research copy)
+_bmad_v6.5/
+
 # Project-specific artifacts (not part of the open-source distribution)
 _bmad-output/
 docs/
